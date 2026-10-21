@@ -24,8 +24,8 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
-      - run: npm run build:site
       - run: npx playwright install --with-deps chromium
+      - run: npm run build:site
       - run: npm run test:browser
       - run: npm run test:site
       - uses: actions/configure-pages@v5

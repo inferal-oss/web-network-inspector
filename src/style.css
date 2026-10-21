@@ -209,28 +209,34 @@ svg {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow-x: auto;
 }
 .network-columns,
 .network-row {
   display: grid;
-  grid-template-columns: minmax(130px, 1.5fr) 74px 72px minmax(100px, 1fr);
+  grid-template-columns: var(
+    --network-columns,
+    320px 80px 64px 72px minmax(160px, 1fr)
+  );
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
 }
 .network-columns {
+  min-width: var(--network-table-width, 772px);
+  flex-shrink: 0;
   font-size: var(--text-10);
   font-weight: 600;
   color: var(--muted);
   background: var(--paper);
   border-bottom: 1px solid var(--line);
-  padding-right: 24px;
 }
 .network-rows {
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-width: var(--network-table-width, 772px);
   min-height: 0;
   flex: 1;
-  scrollbar-gutter: stable;
 }
 .network-row {
   width: 100%;
@@ -242,6 +248,39 @@ svg {
   cursor: pointer;
   font: var(--text-10) var(--mono);
   min-height: 34px;
+}
+.network-column-heading {
+  position: relative;
+  min-width: 0;
+  white-space: nowrap;
+}
+.network-column-resize {
+  position: absolute;
+  right: -8px;
+  top: -7px;
+  bottom: -7px;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+.network-column-resize::after {
+  content: "";
+  position: absolute;
+  width: 2px;
+  top: 4px;
+  bottom: 4px;
+  left: 5px;
+  background: var(--line);
+}
+.network-column-resize:hover::after,
+.network-column-resize:focus-visible::after {
+  background: var(--brand);
+  width: 3px;
+}
+.network-row-code {
+  font-weight: 650;
+  color: var(--muted);
 }
 .network-row:hover {
   background: var(--paper);
@@ -406,18 +445,72 @@ svg {
 .network-footer {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 8px 16px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
   border-top: 1px solid var(--line);
-  font: var(--text-10) var(--mono);
+  background: var(--paper);
   color: var(--muted);
 }
+.network-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.network-recording {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: var(--text-11);
+  font-weight: 650;
+  color: var(--ink);
+}
+.network-recording::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #238268;
+  box-shadow: 0 0 0 3px #23826818;
+}
+.network-recording[data-paused="true"]::before {
+  background: #a96b12;
+  box-shadow: 0 0 0 3px #a96b1218;
+}
 #network-summary {
-  flex: 1;
+  max-width: 650px;
+  font: var(--text-10) / 1.7 var(--mono);
+}
+.network-footer-nav {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
 }
 .network-footer .text-button {
-  font-size: var(--text-10);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: 600 var(--text-11) var(--sans);
+  text-decoration: none;
 }
+.network-footer .text-button:hover:not(:disabled) {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.network-footer .text-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.network-footer #network-latest {
+  background: var(--brand-soft);
+  color: var(--brand);
+  border-color: transparent;
+}
+
 .network-activity button:focus-visible,
 .network-activity input:focus-visible,
 .network-activity select:focus-visible {
@@ -441,9 +534,7 @@ svg {
   }
   .network-columns,
   .network-row {
-    grid-template-columns: minmax(85px, 1fr) 45px 56px minmax(55px, 0.7fr);
-    gap: 5px;
-    padding: 8px;
+    padding-block: 8px;
   }
   .network-detail {
     padding: 10px;
@@ -503,8 +594,13 @@ svg {
   .network-footer {
     flex-wrap: wrap;
   }
-  #network-summary {
-    flex-basis: 100%;
+  .network-footer-info {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .network-footer-nav {
+    margin-left: auto;
   }
 }
 .network-json-tree {
@@ -686,4 +782,55 @@ svg {
 }
 .network-popup-content {
   margin-top: 12px;
+}
+
+/* highlight.js tokens; the iframe inherits the same readable source palette. */
+.hljs {
+  color: var(--ink);
+}
+.hljs-comment,
+.hljs-quote {
+  color: #637168;
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-meta {
+  color: #8239a1;
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attr {
+  color: #14704b;
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-variable {
+  color: #9c4910;
+}
+.hljs-title,
+.hljs-section,
+.hljs-built_in,
+.hljs-type {
+  color: #145caf;
+}
+.hljs-name,
+.hljs-tag,
+.hljs-deletion,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #ad2752;
+}
+.hljs-attribute,
+.hljs-property {
+  color: #175b92;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
 }

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { marked } from "marked";
 import { parseHTML } from "linkedom";
 import { highlightHTML } from "./highlight.mjs";
+import { captureScreenshots } from "./screenshot.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const escape = (value) =>
@@ -24,8 +25,17 @@ export async function buildSite({
     throw new Error("Refusing to replace the source directory.");
   const pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
   const hash = createHash("sha256");
-  for (const file of (await readdir(resolve(root, "src"))).sort())
-    hash.update(await readFile(resolve(root, "src", file)));
+  async function hashDirectory(directory) {
+    for (const entry of (
+      await readdir(directory, { withFileTypes: true })
+    ).sort((a, b) => a.name.localeCompare(b.name))) {
+      const path = resolve(directory, entry.name);
+      hash.update(entry.name);
+      if (entry.isDirectory()) await hashDirectory(path);
+      else hash.update(await readFile(path));
+    }
+  }
+  await hashDirectory(resolve(root, "src"));
   for (const file of [
     "examples/demo.js",
     "examples/style.css",
@@ -40,6 +50,10 @@ export async function buildSite({
   const versionAssets = (html) =>
     html
       .replaceAll(
+        `${basePath}assets/demo.png"`,
+        `${basePath}assets/demo.png?v=${revision}"`,
+      )
+      .replaceAll(
         `${basePath}assets/site.css"`,
         `${basePath}assets/site.css?v=${revision}"`,
       )
@@ -51,7 +65,8 @@ export async function buildSite({
   const header = (active) =>
     `<a class="skip-link" href="#main">Skip to content</a><header class="site-header"><div class="header-inner wrap"><a class="brand" href="${basePath}"><img src="${basePath}assets/wni-mark.svg" width="32" height="32" alt=""><span>Web Network Inspector</span></a><nav class="header-nav" aria-label="Main navigation"><a href="${basePath}"${active === "overview" ? ' aria-current="page"' : ""}>Overview</a><a href="${basePath}demo/">Live demo</a><a href="${basePath}docs/"${active === "docs" ? ' aria-current="page"' : ""}>Documentation</a><a class="source-link" href="https://github.com/inferal-oss/web-network-inspector">GitHub ↗</a><div data-inferal-display></div></nav></div></header>`;
   const sponsor = `<p class="footer-sponsor">Sponsored by <a href="https://inferal.com/"><img src="${basePath}assets/inferal-mark.svg" width="12" height="14" alt="">Inferal</a></p>`;
-  const footer = `<footer class="site-footer"><div class="wrap footer-main"><div><a class="brand" href="${basePath}"><img src="${basePath}assets/wni-mark.svg" width="28" height="28" alt="">Web Network Inspector</a><p>Your network, messages, and application events.<br>One inspector. Yours to extend.</p></div><nav class="footer-links" aria-label="Footer"><a href="${basePath}demo/">Live demo</a><a href="${basePath}docs/api/">API reference</a><a href="${basePath}docs/styling/">Styling guide</a><a href="https://github.com/inferal-oss/web-network-inspector">Source ↗</a></nav></div><div class="wrap footer-bottom">${sponsor}<a href="https://github.com/inferal-oss/web-network-inspector/blob/main/LICENSE">MIT licensed · Made to be useful</a><a href="/">Inferal Open Source ↗</a></div></footer>`;
+  const footer = `<footer class="site-footer"><div class="wrap footer-main"><div class="footer-identity"><a class="brand" href="${basePath}"><img src="${basePath}assets/wni-mark.svg" width="38" height="38" alt="">Web Network Inspector</a><p>A little more clarity.<br>A lot less guessing.</p><span class="footer-caption">NETWORK · MESSAGES · APPLICATION EVENTS</span><a class="footer-demo-link" href="${basePath}demo/">Open the live demo <span aria-hidden="true">↗</span></a></div><nav class="footer-links" aria-label="Footer"><div><h2>GET STARTED</h2><a href="${basePath}docs/">Installation</a><a href="${basePath}docs/react/">React component</a><a href="${basePath}docs/api/">API reference</a></div><div><h2>MAKE IT YOURS</h2><a href="${basePath}docs/columns/">Waterfall columns</a><a href="${basePath}docs/details/">Content previews</a><a href="${basePath}docs/styling/">Styling guide</a></div><div><h2>IN THE OPEN</h2><a href="https://github.com/inferal-oss/web-network-inspector">Source on GitHub ↗</a><a href="https://github.com/inferal-oss/web-network-inspector/issues">Report an issue ↗</a><a href="/">More Inferal projects ↗</a></div></nav></div><div class="wrap footer-bottom">${sponsor}<span>Built for curious developers. Shared under MIT.</span><a href="https://github.com/inferal-oss/web-network-inspector/blob/main/LICENSE">View license ↗</a></div></footer>`;
+
   await rm(output, { recursive: true, force: true });
   await mkdir(resolve(output, "assets"), { recursive: true });
   await cp(resolve(root, "site/assets"), resolve(output, "assets"), {
@@ -64,10 +79,7 @@ export async function buildSite({
   );
   await cp(resolve(root, "site/site.css"), resolve(output, "assets/site.css"));
   await cp(resolve(root, "site/site.js"), resolve(output, "assets/site.js"));
-  await cp(
-    resolve(root, "examples/screenshots/demo.png"),
-    resolve(output, "assets/demo.png"),
-  );
+  await captureScreenshots({ output: resolve(output, "assets") });
   await cp(resolve(root, "src"), resolve(output, "src"), { recursive: true });
   await cp(resolve(root, "examples"), resolve(output, "demo"), {
     recursive: true,
@@ -98,11 +110,11 @@ export async function buildSite({
       "<main>",
       `<nav class="demo-site-nav" aria-label="Demo navigation"><a href="${basePath}">← Web Network Inspector</a><a href="${basePath}docs/api/">API reference</a><a href="${basePath}docs/styling/">Styling guide</a></nav><main>`,
     )
-    .replace(
-      "</main>",
-      `<footer class="demo-site-footer"><div class="footer-bottom">${sponsor}<a href="${basePath}">Back to the project →</a></div></footer></main>`,
-    );
-  await writeFile(resolve(output, "demo/index.html"), versionAssets(demo));
+    .replace("</main>", `</main>${footer}`);
+  await writeFile(
+    resolve(output, "demo/index.html"),
+    versionAssets(highlightHTML(demo)),
+  );
   const landing = (await readFile(resolve(root, "site/index.html"), "utf8"))
     .replaceAll("{{BASE}}", basePath)
     .replaceAll("{{VERSION}}", escape(pkg.version))
@@ -121,6 +133,7 @@ export async function buildSite({
     ["React component", "docs/react/", "docs/react.md"],
     ["Capture filters", "docs/filtering/", "docs/filtering.md"],
     ["Request details", "docs/details/", "docs/details.md"],
+    ["Waterfall columns", "docs/columns/", "docs/columns.md"],
     ["Local history", "docs/storage/", "docs/storage.md"],
     ["Display preferences", "docs/display/", "docs/display.md"],
   ];

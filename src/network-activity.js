@@ -1,3 +1,5 @@
+import { activityName as name, setupColumnLayout } from "./columns.js";
+export { timelinePosition } from "./columns.js";
 import { previewParts } from "./network-capture.js";
 import { createDetailView } from "./detail-renderer.js";
 
@@ -10,27 +12,6 @@ const bytes = (value) =>
 const ms = (value) => `${value.toFixed(1)} ms`;
 function text(node, value) {
   if (node.textContent !== value) node.textContent = value;
-}
-function name(entry) {
-  if (entry.kind === "event") return entry.label;
-  if (["message", "socket"].includes(entry.kind) && entry.label)
-    return entry.label;
-  if (entry.kind === "message")
-    return `${entry.direction === "out" ? "↑" : "↓"} ${entry.protocol || "Message"}`;
-  try {
-    const url = new URL(entry.url);
-    return `${entry.method || "WS"} ${url.pathname}${url.search}`;
-  } catch {
-    return entry.url;
-  }
-}
-function host(entry) {
-  if (entry.kind === "event") return "";
-  try {
-    return new URL(entry.url).host;
-  } catch {
-    return "";
-  }
 }
 export function activitySize(entry) {
   const size =
@@ -48,18 +29,6 @@ export function sortActivity(entries, order = "time") {
     return (order === "largest" ? right - left : left - right) || time(a, b);
   });
 }
-export function timelinePosition(entry, start, end, now) {
-  const span = Math.max(1, end - start),
-    left = Math.max(0, Math.min(100, ((entry.start - start) / span) * 100));
-  return {
-    left,
-    width: Math.max(
-      0,
-      Math.min(100 - left, (((entry.end ?? now) - entry.start) / span) * 100),
-    ),
-  };
-}
-
 /** Mount the retained waterfall inside an inspector's own root. */
 export function setupNetworkActivity(root, scope, store, options = {}) {
   const document = root.ownerDocument;
@@ -108,6 +77,14 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
   const latest = get("network-latest");
   const connection = get("network-connection");
   const sortSize = get("network-sort-size");
+  const columnLayout = setupColumnLayout({
+    root,
+    scope,
+    store,
+    columns: options.columns,
+    sortSize,
+  });
+  cleanup.push(() => columnLayout.destroy());
   const resize = get("network-resize");
   const retentionForm = get("network-retention-form"),
     retentionStatus = get("network-retention-status");
@@ -501,6 +478,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
       const keep = new Set(visible.map((e) => e.id));
       for (const [id, row] of rows)
         if (!keep.has(id)) {
+          columnLayout.disposeRow(row);
           row.remove();
           rows.delete(id);
         }
@@ -524,6 +502,10 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
         ? " · local history enabled"
         : " · local history unavailable"
       : "";
+    get("network-recording").textContent = store.paused
+      ? "Paused"
+      : "Recording";
+    get("network-recording").dataset.paused = String(store.paused);
     summary.textContent = `${filtered.length} matching · ${bytes(store.bytes)} previews · ${store.expired} entries expired · ${store.expiredPreviews} previews expired · ${browsingStatus}${storageStatus}`;
     latest.hidden = !(frozen || browsing());
     text(latest, `${newCount} new · Jump to latest`);
@@ -538,23 +520,26 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     for (const entry of visible) {
       let row = rows.get(entry.id);
       if (!row) {
-        row = element("button", "network-row");
-        row.type = "button";
+        row = element("div", "network-row");
+        row.setAttribute("role", "button");
+        row.setAttribute("tabindex", "0");
         row.dataset.kind = entry.kind;
-        for (const cls of [
-          "network-row-name",
-          "network-row-status",
-          "network-row-size",
-          "network-track",
-        ])
-          row.append(element("span", cls));
-        row.firstChild.append(
-          element("span", "network-row-label"),
-          element("span", "network-row-host"),
-        );
+        row.dataset.entryId = String(entry.id);
         const id = entry.id;
-        row.lastChild.append(element("i"));
-        listen(row, "click", () => select(id));
+        listen(row, "click", (event) => {
+          if (
+            !event.target.closest?.(
+              "button,input,select,textarea,a,[contenteditable]",
+            )
+          )
+            select(id);
+        });
+        listen(row, "keydown", (event) => {
+          if (event.target === row && ["Enter", " "].includes(event.key)) {
+            event.preventDefault();
+            select(id);
+          }
+        });
         rows.set(id, row);
       }
       if (row.previousElementSibling !== previous || row.parentElement !== list)
@@ -564,31 +549,11 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
         );
       previous = row;
       const label = name(entry);
-      text(row.firstChild.firstChild, `#${entry.id} ${label}`);
-      const rowHost = row.firstChild.lastChild,
-        hostname = host(entry);
-      text(rowHost, hostname);
-      rowHost.hidden = !hostname;
+      row.setAttribute("aria-label", `#${entry.id} ${label}`);
       row.title = entry.url ? `${label}\n${entry.url}` : label;
-      text(
-        row.children[1],
-        String(entry.status ?? (entry.kind === "event" ? "Event" : "")),
-      );
-      text(
-        row.children[2],
-        bytes(
-          entry.body?.size ?? entry.responseBody?.size ?? entry.transferSize,
-        ),
-      );
-      const bar = row.lastChild.firstChild,
-        pos = timelinePosition(entry, start, end, now);
-      bar.style.left = `${pos.left}%`;
-      bar.style.width =
-        entry.socketEvent || ["event", "message"].includes(entry.kind)
-          ? "3px"
-          : `max(3px, ${pos.width}%)`;
-      row.lastChild.title = `${ms(entry.start - start)} after timeline start${entry.end != null ? ` · ${ms(entry.end - entry.start)}` : ""}`;
+      columnLayout.renderRow(row, entry, { start, end, now });
     }
+    columnLayout.releaseExpired();
     for (const [id, row] of rows) {
       const pressed = String(selected === id);
       if (row.getAttribute("aria-pressed") !== pressed)
@@ -633,6 +598,15 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     setOpen,
     render,
     select,
+    getColumns: columnLayout.getColumns,
+    setColumns(columns) {
+      columnLayout.setColumns(columns);
+      for (const row of rows.values()) row.remove();
+      rows.clear();
+      resetView();
+      dirty = true;
+      render();
+    },
     destroy() {
       clearInterval(timer);
       clearInterval(counterTimer);

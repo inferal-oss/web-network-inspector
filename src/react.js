@@ -19,6 +19,7 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
     nonce,
     onReady,
     resourcePreviews,
+    columns,
     renderDetails,
     ...containerProps
   },
@@ -39,6 +40,7 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
       stylesheet,
       nonce,
       resourcePreviews,
+      columns,
       renderDetails,
     });
     instance.current = inspector;
@@ -75,6 +77,7 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
     stylesheet,
     nonce,
     resourcePreviews,
+    columns,
     renderDetails,
     forwardedRef,
   ]);

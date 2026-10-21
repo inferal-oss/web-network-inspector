@@ -15,7 +15,7 @@ The default renderer uses each body's `contentType`:
 | HTML                       | Nested sandboxed iframe and source text            |
 | Images, including SVG      | Image from retained bytes                          |
 | Audio and video            | Native media controls for a complete retained body |
-| Text, CSS, JavaScript, XML | Source text                                        |
+| Text, CSS, JavaScript, XML | Syntax-colored source text                         |
 | Other binary data          | Hex dump                                           |
 
 Messages without a MIME type use JSON when their retained text is valid JSON.
@@ -23,6 +23,21 @@ Truncated previews show how many bytes were retained. Incomplete images and
 media fall back to their retained text or hex bytes. HTML previews disable
 scripts, forms, navigation permissions, and external network loads. Images and
 media use local blob URLs, which are released when the renderer is replaced.
+
+## Syntax highlighting
+
+Text previews use highlight.js 11.11.1 with its complete bundled language registry.
+The browser loads the self-hosted highlighter on the first text preview. There
+is no CDN request and no extra runtime npm dependency. The renderer chooses a
+language from the MIME type or URL extension, including highlight.js aliases.
+For unknown types, it attempts automatic detection only for snippets up to
+2,048 characters. Larger unknown bodies remain plain text. Binary hex dumps,
+expired previews, and unavailable bodies remain plain text. Raw JSON and HTML
+source are highlighted too. All source remains selectable and is escaped by
+the highlighter; HTML source never becomes executable markup.
+
+Colors are in the inspector stylesheet as standard `.hljs-*` token classes.
+A replacement stylesheet can override these colors in the details iframe.
 
 ## Browser resources
 

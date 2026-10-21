@@ -263,3 +263,20 @@ select {
     gap: 16px;
   }
 }
+.columns-example {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: #526680;
+}
+.columns-example summary {
+  cursor: pointer;
+}
+.columns-example pre {
+  padding: 12px;
+  background: #f4f6fb;
+  border: 1px solid #dce3ef;
+  border-radius: 8px;
+  overflow: auto;
+  font-size: 0.6875rem;
+  line-height: 1.7;
+}

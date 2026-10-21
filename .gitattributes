@@ -1,0 +1,2 @@
+# The generated language grammars contain significant whitespace in strings.
+src/vendor/highlight.js -whitespace

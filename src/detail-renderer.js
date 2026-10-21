@@ -1,4 +1,5 @@
 import { previewText } from "./network-capture.js";
+import { highlightPreview } from "./syntax-highlight.js";
 import { jsonBodyPreview } from "./network-json.js";
 
 const bytes = (value) =>
@@ -23,6 +24,18 @@ export function renderDefaultDetails({
   name,
 }) {
   const urls = [];
+  let active = true;
+  const source = (preview, language) => {
+    const node = element("pre", "", previewText(preview));
+    if (preview.text && !preview.expired && !preview.note)
+      void highlightPreview(node, {
+        contentType: preview.contentType,
+        url: entry?.url,
+        language,
+        active: () => active,
+      });
+    return node;
+  };
   const element = (tag, className, value) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -262,7 +275,7 @@ export function renderDefaultDetails({
             "",
             preview.truncated ? "Raw preview" : "Raw JSON",
           ),
-          element("pre", "", previewText(preview)),
+          source(preview, "json"),
         );
         section.append(json, raw);
       } else if (!preview.expired && !preview.note && type === "text/html") {
@@ -273,7 +286,7 @@ export function renderDefaultDetails({
         frame.srcdoc =
           "<!doctype html><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'\"><meta name=\"referrer\" content=\"no-referrer\">" +
           previewText(preview);
-        section.append(frame, element("pre", "", previewText(preview)));
+        section.append(frame, source(preview, "xml"));
       } else if (
         !preview.expired &&
         !preview.note &&
@@ -292,10 +305,11 @@ export function renderDefaultDetails({
         if (media.tagName === "IMG") media.alt = `${label} preview`;
         else media.controls = true;
         section.append(media);
-      } else section.append(element("pre", "", previewText(preview)));
+      } else section.append(source(preview));
       detail.append(section);
     }
   return () => {
+    active = false;
     for (const url of urls) document.defaultView.URL.revokeObjectURL(url);
   };
 }

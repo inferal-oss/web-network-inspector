@@ -72,6 +72,7 @@ test("all site pages and local assets resolve beneath the project prefix", async
     "docs/react/",
     "docs/filtering/",
     "docs/details/",
+    "docs/columns/",
     "docs/storage/",
     "docs/display/",
     "demo/",
@@ -123,6 +124,8 @@ test("API and styling docs expose real methods, tokens, and section anchors", ()
       "openPopup",
       "annotateMessage",
       "destroy",
+      "getColumns",
+      "setColumns",
     ])
       assert.match(
         await page.locator(".doc-content").textContent(),

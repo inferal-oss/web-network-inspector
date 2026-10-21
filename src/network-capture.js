@@ -192,6 +192,7 @@ export class NetworkCapture {
             trimmed = this.trimPreview(previous);
           this.bytes += trimmed.bytes.byteLength - previous.bytes.byteLength;
           entry[key] = trimmed;
+          if (trimmed !== previous) entry.revision++;
         }
     this.expirePreviews();
     this.changed();
@@ -249,6 +250,7 @@ export class NetworkCapture {
       nearEvent: this.lastEvent,
       eventId: null,
       ...data,
+      revision: 0,
     };
     entry.capturedAt ??= this.timeOrigin + entry.start;
     this.entries.push(entry);
@@ -304,6 +306,7 @@ export class NetworkCapture {
   update(entry, data) {
     if (this.has(entry)) {
       Object.assign(entry, data);
+      entry.revision++;
       this.changed();
     }
   }
@@ -312,6 +315,7 @@ export class NetworkCapture {
     preview = this.trimPreview(preview);
     this.bytes -= entry[part]?.bytes?.byteLength ?? 0;
     entry[part] = preview;
+    entry.revision++;
     this.bytes += preview.bytes.byteLength;
     this.expirePreviews();
     this.changed();
@@ -324,6 +328,7 @@ export class NetworkCapture {
         if (!previous?.bytes?.byteLength) continue;
         this.bytes -= previous.bytes.byteLength;
         item[key] = { ...previous, bytes: new Uint8Array(), expired: true };
+        item.revision++;
         this.expiredPreviews++;
         if (this.bytes <= this.limits.bytes) break;
       }
@@ -832,6 +837,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
               encodedBodySize: resource.encodedBodySize,
               decodedBodySize: resource.decodedBodySize,
               nextHopProtocol: short(resource.nextHopProtocol, 32),
+              httpCode: resource.responseStatus || null,
               status: "Loaded",
               nearEvent,
               note: "The browser exposes timing for this original resource load. Load a separate preview to inspect response headers and content.",

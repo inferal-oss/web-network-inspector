@@ -96,6 +96,34 @@
             </p>
           </div>
         </section>
+        <section class="card socket-card" aria-labelledby="columns-title">
+          <div>
+            <span class="step">04 / MAKE IT YOURS</span>
+            <h2 id="columns-title">Your data. Your columns.</h2>
+            <p>
+              Add a Transport column and replace the HTTP code renderer. Every
+              column is a function receiving the retained entry. Drag the header
+              dividers to make room for a full path.
+            </p>
+          </div>
+          <div>
+            <button id="columns-toggle" aria-pressed="false">
+              Try custom columns
+            </button>
+            <p id="columns-result" class="result" role="status">
+              Default columns · drag a divider to resize
+            </p>
+            <details class="columns-example">
+              <summary>See the column API</summary>
+              <pre><code class="language-js">inspector.setColumns([
+  ...defaultColumns.slice(0, -1),
+  { id: "kind", label: "Transport", width: 100,
+    render: entry =&gt; entry.kind },
+  defaultColumns.at(-1),
+]);</code></pre>
+            </details>
+          </div>
+        </section>
       </div>
       <div class="extension-note">
         <span class="extension-symbol" aria-hidden="true">↙</span>

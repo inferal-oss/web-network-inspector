@@ -120,7 +120,10 @@ script closes its browser and local server when finished.
 ## Project website
 
 `npm run build:site` builds the landing page, live demo, API reference, and
-styling guide into `dist/`. The API page is generated from `docs/api.md`.
+styling guide into `dist/`. The build captures fresh demo and popup screenshots
+from the current source, so the landing image stays in sync on every Pages
+deployment. Install Chromium first with `npx playwright install chromium`.
+The API page is generated from `docs/api.md`.
 `npm run test:site` checks links, static-hosting paths, docs, mobile layout,
 and demo interactions under `/web-network-inspector/`.
 
@@ -140,6 +143,6 @@ Pass a synchronous `filter` to `createInspector`, or configure it on a shared
 The demo also connects to Postman’s public WebSocket echo service after you
 click Connect, then captures sent and echoed messages as separate frames.
 
-[Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)
+[Waterfall columns and custom renderers](docs/columns.md) · [Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)
 
 The public site and demo use synchronized [Open Regard display preferences](docs/display.md). This integration adds no runtime dependency to the inspector package.

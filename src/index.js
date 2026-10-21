@@ -1,3 +1,4 @@
+import { normalizeColumns } from "./columns.js";
 import { NetworkCapture, installNetworkCapture } from "./network-capture.js";
 import { setupNetworkActivity } from "./network-activity.js";
 import { panelHTML } from "./template.js";
@@ -21,8 +22,10 @@ export function createInspector({
   stylesheet = new URL("./style.css", import.meta.url).href,
   nonce,
   resourcePreviews = "manual",
+  columns,
   renderDetails,
 } = {}) {
+  columns = normalizeColumns(columns);
   if (!["manual", "on-select"].includes(resourcePreviews))
     throw new TypeError("resourcePreviews must be manual or on-select.");
   if (renderDetails !== undefined && typeof renderDetails !== "function")
@@ -48,6 +51,7 @@ export function createInspector({
   container.append(host);
   const ui = setupNetworkActivity(root, scope, store, {
     renderDetails,
+    columns,
     resourcePreviews,
     loadResource: transport?.loadResource,
   });
@@ -201,6 +205,14 @@ export function createInspector({
     host,
     root,
     store,
+    getColumns() {
+      ensure();
+      return ui.getColumns();
+    },
+    setColumns(columns) {
+      ensure();
+      ui.setColumns(columns);
+    },
     loadResource(entry) {
       ensure();
       if (!transport)
@@ -257,3 +269,13 @@ export {
   anyOf,
   not,
 } from "./filters.js";
+
+export {
+  hostPath,
+  status,
+  size,
+  code,
+  waterfall,
+  columnRenderers,
+  defaultColumns,
+} from "./columns.js";

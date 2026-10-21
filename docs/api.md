@@ -6,18 +6,19 @@ The [React component](react.md) wraps this API with React mounting and cleanup.
 
 Import from `web-network-inspector` or the source's `src/index.js`.
 
-| Option             | Default                         | Meaning                                                                                    |
-| ------------------ | ------------------------------- | ------------------------------------------------------------------------------------------ |
-| `scope`            | `window`                        | Browser window whose transports are captured.                                              |
-| `container`        | `scope.document.body`           | DOM container for the host element.                                                        |
-| `filter`           | unset                           | Synchronous predicate for an instance-owned store. See [capture filters](filtering.md).    |
-| `store`            | `new NetworkCapture()`          | Retained history shared with this view.                                                    |
-| `capture`          | `true`                          | Install transport wrappers. Set false for manual events or another view of a shared store. |
-| `open`             | `false`                         | Start with the waterfall expanded.                                                         |
-| `stylesheet`       | Module-relative `style.css` URL | CSS URL loaded inside the shadow root. Override for bundled assets.                        |
-| `resourcePreviews` | `"manual"`                      | `"on-select"` loads a resource preview on selection. See [request details](details.md).    |
-| `renderDetails`    | Built-in content-type renderer  | Function receiving a sandboxed iframe and DOM context. See [request details](details.md).  |
-| `nonce`            | unset                           | Optional nonce on the stylesheet link for the host's CSP policy.                           |
+| Option             | Default                         | Meaning                                                                                           |
+| ------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `scope`            | `window`                        | Browser window whose transports are captured.                                                     |
+| `container`        | `scope.document.body`           | DOM container for the host element.                                                               |
+| `filter`           | unset                           | Synchronous predicate for an instance-owned store. See [capture filters](filtering.md).           |
+| `store`            | `new NetworkCapture()`          | Retained history shared with this view.                                                           |
+| `capture`          | `true`                          | Install transport wrappers. Set false for manual events or another view of a shared store.        |
+| `open`             | `false`                         | Start with the waterfall expanded.                                                                |
+| `stylesheet`       | Module-relative `style.css` URL | CSS URL loaded inside the shadow root. Override for bundled assets.                               |
+| `resourcePreviews` | `"manual"`                      | `"on-select"` loads a resource preview on selection. See [request details](details.md).           |
+| `renderDetails`    | Built-in content-type renderer  | Function receiving a sandboxed iframe and DOM context. See [request details](details.md).         |
+| `columns`          | `defaultColumns`                | Ordered column definitions and synchronous render functions. See [waterfall columns](columns.md). |
+| `nonce`            | unset                           | Optional nonce on the stylesheet link for the host's CSP policy.                                  |
 
 Returns `host`, `root` (the shadow root), `store`, and the methods below.
 The host owns its styles and does not change the page's padding or global CSS.
@@ -42,6 +43,12 @@ chronological proximity, not a confirmed causal relationship. Use explicit IDs
 when associating asynchronous work. Types, labels, and correlation strings
 are bounded to 80, 160, and 128 characters respectively. The payload follows
 the store's preview and memory limits.
+
+### `getColumns()` and `setColumns(columns)`
+
+Read the current column definitions, including resized widths, or replace them
+with a validated array. Defaults and named cell renderers are exported. See
+[waterfall columns](columns.md) for adding, replacing, and resizing columns.
 
 ### `subscribe(listener)`
 

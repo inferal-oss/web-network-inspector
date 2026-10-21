@@ -73,10 +73,11 @@ test("real browser captures fetch and generic events; selected rows hold through
           data: `tick ${i}`,
         });
     });
-    await page.waitForFunction(() =>
-      window.inspector.root
-        .getElementById("network-latest")
-        .textContent.includes("230 new"),
+    await page.waitForFunction(
+      () =>
+        window.inspector.root
+          .getElementById("network-latest")
+          .textContent.match(/^(\d+) new/)?.[1] >= 230,
     );
     assert.equal(await page.locator(".network-row").count(), before);
     assert.match(
@@ -150,7 +151,9 @@ test("generic bar popup supports keyboard close, focus restoration, custom conte
 test("resize, collapse, pause and destroy work on a narrow viewport without leaking global styles", () =>
   fixture(async (page) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    const resizer = page.getByRole("separator");
+    const resizer = page.getByRole("separator", {
+      name: /^Resize network activity/,
+    });
     const before = Number(await resizer.getAttribute("aria-valuenow"));
     await resizer.focus();
     await resizer.press("ArrowUp");
@@ -636,4 +639,165 @@ test("content-type renderer isolates HTML and shows images; custom details get a
     const before = await page.evaluate(() => window.cleanups);
     await page.evaluate(() => window.inspector.destroy());
     assert.equal(await page.evaluate(() => window.cleanups), before + 1);
+  }));
+
+test("columns resize by pointer and keyboard, expose HTTP codes, and support custom controls with cleanup", () =>
+  fixture(async (page) => {
+    await page
+      .getByRole("button", { name: "Fetch example JSON", exact: true })
+      .click();
+    const request = page.getByRole("button", { name: /POST \/anything/ });
+    await request
+      .locator('[data-column="code"]')
+      .getByText("200", { exact: true })
+      .waitFor();
+    const grip = page.getByRole("separator", {
+      name: "Resize Request / event column",
+      exact: true,
+    });
+    await grip.focus();
+    await grip.press("ArrowRight");
+    assert.equal(await grip.getAttribute("aria-valuenow"), "330");
+    const box = await grip.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2);
+    await page.mouse.up();
+    assert.equal(await grip.getAttribute("aria-valuenow"), "450");
+    assert.equal(
+      await request
+        .locator('[data-column="hostPath"]')
+        .evaluate((n) => Math.round(n.getBoundingClientRect().width)),
+      450,
+    );
+    await page
+      .getByRole("button", { name: "Try custom columns", exact: true })
+      .click();
+    assert.equal(
+      await request.locator('[data-column="transport"]').textContent(),
+      "Fetch / XHR",
+    );
+    await page
+      .getByRole("button", { name: "Restore default columns", exact: true })
+      .click();
+    assert.equal(await request.locator('[data-column="transport"]').count(), 0);
+    await page.evaluate(() => {
+      window.columnClicks = 0;
+      window.columnCleanups = 0;
+      window.columnRenders = 0;
+      window.inspector.store.clear();
+      window.inspector.setColumns([
+        {
+          id: "action",
+          label: "Action",
+          width: 180,
+          render(entry, { container, document }) {
+            window.columnRenders++;
+            const button = document.createElement("button");
+            button.textContent = "Custom action " + entry.label;
+            button.addEventListener("click", () => window.columnClicks++);
+            container.append(button);
+            return () => window.columnCleanups++;
+          },
+        },
+      ]);
+      window.columnEntry = window.inspector.recordEvent({
+        label: "One",
+        data: "payload",
+      });
+    });
+    await page
+      .getByRole("button", { name: "Custom action One", exact: true })
+      .click();
+    assert.equal(await page.evaluate(() => window.columnClicks), 1);
+    assert.equal(
+      await page.locator('.network-row[aria-pressed="true"]').count(),
+      0,
+    );
+    await page.getByRole("button", { name: /Jump to latest/ }).click();
+    const renders = await page.evaluate(() => window.columnRenders);
+    await page.waitForTimeout(100);
+    assert.equal(await page.evaluate(() => window.columnRenders), renders);
+    await page.evaluate(() =>
+      window.inspector.store.update(window.columnEntry, { label: "Two" }),
+    );
+    await page
+      .getByRole("button", { name: "Custom action Two", exact: true })
+      .waitFor();
+    assert.equal(await page.evaluate(() => window.columnCleanups), 1);
+    const invalid = await page.evaluate(() => {
+      try {
+        window.inspector.setColumns([]);
+        return false;
+      } catch {
+        return window.inspector.getColumns()[0].id === "action";
+      }
+    });
+    assert.equal(invalid, true);
+    await page.locator(".network-row").focus();
+    await page.locator(".network-row").press("Enter");
+    await page.evaluate(() => {
+      window.inspector.store.setLimits({ entries: 1 });
+      window.inspector.recordEvent({ label: "Replacement" });
+    });
+    await page
+      .locator('.network-row [data-column="action"]')
+      .getByText("Expired", { exact: true })
+      .waitFor();
+    assert.equal(await page.evaluate(() => window.columnCleanups), 2);
+    await page.evaluate(() => window.inspector.destroy());
+    assert.equal(await page.evaluate(() => window.columnCleanups), 2);
+  }));
+
+test("default previews color CSS, Python, and escaped HTML source without changing source text", () =>
+  fixture(async (page) => {
+    await page.evaluate(async () => {
+      const { bodyPreview } = await import("/src/index.js");
+      window.inspector.store.clear();
+      for (const [path, contentType, text] of [
+        ["style.css", "text/css", "body { color: red; margin: 12px; }"],
+        [
+          "example.py",
+          "text/x-python",
+          'def greet(name):\n    return "Hello " + name',
+        ],
+        [
+          "markup.html",
+          "text/html",
+          '<img src=x onerror="window.injected=true"><script>window.injected=true</script>',
+        ],
+      ]) {
+        const entry = window.inspector.store.add({
+          kind: "http",
+          method: "GET",
+          url: "https://example.com/" + path,
+          status: 200,
+        });
+        window.inspector.store.preview(
+          entry,
+          "responseBody",
+          bodyPreview(text, 10000, contentType),
+        );
+      }
+    });
+    const details = page.frameLocator(".network-detail-frame");
+    for (const [path, language, text] of [
+      ["style.css", "css", "body { color: red; margin: 12px; }"],
+      ["example.py", "python", 'def greet(name):\n    return "Hello " + name'],
+      [
+        "markup.html",
+        "xml",
+        '<img src=x onerror="window.injected=true"><script>window.injected=true</script>',
+      ],
+    ]) {
+      await page
+        .getByRole("button", { name: new RegExp("GET /" + path) })
+        .click();
+      const pre = details.locator(`pre.hljs[data-language="${language}"]`);
+      await pre.waitFor();
+      assert.equal(await pre.textContent(), text);
+      assert.ok((await pre.locator('span[class^="hljs-"]').count()) > 0);
+      assert.equal(await pre.locator("img,script").count(), 0);
+    }
+    assert.equal(await page.evaluate(() => window.injected), undefined);
   }));

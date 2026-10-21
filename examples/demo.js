@@ -1,4 +1,9 @@
-import { createInspector, createPersistentCapture } from "../src/index.js";
+import {
+  createInspector,
+  createPersistentCapture,
+  defaultColumns,
+  code,
+} from "../src/index.js";
 const store = await createPersistentCapture({
   storage: (await import("../src/storage.js")).createIndexedDBStorage({
     database: "web-network-inspector-demo",
@@ -354,3 +359,49 @@ function syncDetailsDisplay(document) {
       style.getPropertyValue(key),
     );
 }
+
+// Replace a default renderer, insert a custom cell, and keep the other defaults.
+const customColumns = defaultColumns.flatMap((column) => {
+  if (column.id === "code")
+    return [
+      {
+        ...column,
+        width: 90,
+        render(entry, context) {
+          code(entry, context);
+          if (Number(context.container.textContent) >= 400)
+            context.container.style.color = "#b63460";
+        },
+      },
+    ];
+  if (column.id === "waterfall")
+    return [
+      {
+        id: "transport",
+        label: "Transport",
+        width: 100,
+        render: (entry) =>
+          ({
+            http: "Fetch / XHR",
+            resource: "Resource",
+            socket: "WebSocket",
+            message: "WS frame",
+            event: "App event",
+          })[entry.kind] || entry.kind,
+      },
+      column,
+    ];
+  return [column];
+});
+const columnsButton = document.getElementById("columns-toggle");
+columnsButton.addEventListener("click", () => {
+  const enabled = columnsButton.getAttribute("aria-pressed") !== "true";
+  inspector.setColumns(enabled ? customColumns : defaultColumns);
+  columnsButton.setAttribute("aria-pressed", String(enabled));
+  columnsButton.textContent = enabled
+    ? "Restore default columns"
+    : "Try custom columns";
+  document.getElementById("columns-result").textContent = enabled
+    ? "Added Transport and replaced the HTTP code renderer. Drag any header divider to resize."
+    : "Default columns restored. Drag any header divider to resize.";
+});
