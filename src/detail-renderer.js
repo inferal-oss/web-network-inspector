@@ -283,8 +283,14 @@ export function renderDefaultDetails({
         frame.title = `${label} HTML preview`;
         frame.setAttribute("sandbox", "");
         frame.referrerPolicy = "no-referrer";
+        // Give unstyled HTML the preview's canvas and text colors. Authored
+        // document styles still take precedence inside the opaque sandbox.
+        const palette = document.defaultView.getComputedStyle(detail);
+        const canvas = element("style", "");
+        canvas.textContent = `:root { color-scheme: ${palette.colorScheme}; } body { color: ${palette.getPropertyValue("--ink") || palette.color}; background: ${palette.getPropertyValue("--panel") || palette.backgroundColor}; }`;
         frame.srcdoc =
           "<!doctype html><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; style-src 'unsafe-inline'; img-src data:; form-action 'none'; base-uri 'none'\"><meta name=\"referrer\" content=\"no-referrer\">" +
+          canvas.outerHTML +
           previewText(preview);
         section.append(frame, source(preview, "xml"));
       } else if (
@@ -325,9 +331,9 @@ export function createDetailView(container, options) {
     showMessages,
     loadResource,
     resourcePreviews,
-    renderDetails = renderDefaultDetails,
     detailFrame = true,
   } = options;
+  let renderDetails = options.renderDetails ?? renderDefaultDetails;
   let document,
     body,
     current = null,
@@ -426,6 +432,14 @@ export function createDetailView(container, options) {
     body = container;
   }
   return {
+    setRenderer(renderer = renderDefaultDetails) {
+      if (typeof renderer !== "function")
+        throw new TypeError(
+          "Details renderer must be a function or undefined.",
+        );
+      renderDetails = renderer;
+      draw();
+    },
     render(entry, id) {
       if (selected !== id) resetScroll = true;
       current = entry;

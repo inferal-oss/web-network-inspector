@@ -153,6 +153,13 @@ inspector.setColumns([
               timing and payload size. The standard headers and body previews
               follow below.
             </p>
+            <label class="theme-choice"
+              ><input type="checkbox" id="details-toggle" checked /> Use custom
+              details view</label
+            >
+            <p class="result" id="details-result" role="status">
+              Custom summary + default headers and body previews
+            </p>
           </div>
           <div>
             <details class="columns-example" open>
@@ -176,7 +183,8 @@ inspector.setColumns([
             <span class="step">06 / CUSTOM STYLING</span>
             <h2 id="theme-title">A different look. The same inspector.</h2>
             <p>
-              Try Plum: warm surfaces, violet accents, and softer controls. CSS
+              Try Plum for warm violet surfaces, or Midnight for a complete dark
+              theme, including content previews and Activity Insight badges. CSS
               variables cross the Shadow DOM boundary; a small override
               stylesheet adds the finishing touches. Your display preferences
               still apply, including in the details preview.
@@ -185,13 +193,17 @@ inspector.setColumns([
               ><input type="checkbox" id="theme-toggle" /> Use the custom Plum
               theme</label
             >
+            <label class="theme-choice"
+              ><input type="checkbox" id="theme-dark" /> Use the dark Midnight
+              theme</label
+            >
             <p class="result" id="theme-result" role="status">
               Default inspector styling
             </p>
           </div>
           <details class="columns-example" open>
             <summary>See the theme CSS</summary>
-            <pre><code class="language-css">[data-web-network-inspector][data-demo-theme="plum"] {
+            <pre><code class="language-css">[data-web-network-inspector][data-demo-effective="plum"] {
   --brand: #7c3aed;
   --brand-dark: #6024b5;
   --brand-soft: #efe5ff;
@@ -199,8 +211,17 @@ inspector.setColumns([
   --ink: #312044;
 }
 /* Add inside inspector.root for internal selectors. */
-:host([data-demo-theme="plum"]) .network-popup {
+:host([data-demo-effective="plum"]) .network-popup {
   border-radius: 18px;
+}
+/* Dark colors and token overrides also go into the details iframe. */
+:host([data-demo-effective="dark"]) {
+  color-scheme: dark;
+  --panel: #141c2b;
+  --ink: #e7edf8;
+}
+:host([data-demo-effective="dark"]) .network-json-string {
+  color: #9be5c5;
 }</code></pre>
           </details>
         </section>
@@ -210,7 +231,8 @@ inspector.setColumns([
         <p>
           <strong>The bar is yours, too.</strong> Change the environment, watch
           the event counter, or open the connection popup. These are custom
-          elements added through the public API.
+          elements added through the public API. Checkbox changes are captured
+          as labeled application events with their checked state.
         </p>
         <span class="local-tag">BOUNDED LOCAL HISTORY · SYNTHETIC DATA</span>
       </div>

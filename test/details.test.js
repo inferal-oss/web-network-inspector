@@ -47,3 +47,30 @@ test("a custom renderer error produces visible text instead of interrupting capt
   );
   view.destroy();
 });
+
+test("changing the details renderer cleans up the old view and redraws the same selection", () => {
+  const { document } = parseHTML("<html><body></body></html>");
+  let cleanups = 0;
+  const view = createDetailView(document.body, {
+    root: { ownerDocument: document },
+    store: new NetworkCapture(),
+    detailFrame: false,
+    renderDetails: ({ container }) => {
+      container.textContent = "Custom";
+      return () => cleanups++;
+    },
+  });
+  view.render(null, null);
+  assert.throws(() => view.setRenderer(false), /function/);
+  assert.equal(document.body.textContent, "Custom");
+  view.setRenderer();
+  assert.equal(cleanups, 1);
+  assert.match(document.body.textContent, /Select a request/);
+  view.setRenderer(({ container }) => {
+    container.textContent = "Another";
+    return () => cleanups++;
+  });
+  assert.equal(document.body.textContent, "Another");
+  view.destroy();
+  assert.equal(cleanups, 2);
+});

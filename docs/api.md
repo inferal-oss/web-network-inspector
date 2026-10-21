@@ -208,3 +208,9 @@ IndexedDB, and custom async adapter examples. Captured history is separate.
 ## Persistent history and details rendering
 
 See [local history](storage.md) for `createPersistentCapture`, IndexedDB storage, retention, and the storage lifecycle. See [request details](details.md) for content-type previews, sandboxed custom rendering, and resource loading. WebSocket closes add a point event with `kind: "socket"`, `socketEvent: "close"`, a connection ID, close code, reason, and clean-close flag, as well as finishing the connection lifetime row.
+
+## `setDetailsRenderer(renderer?)`
+
+Replace the details callback and redraw the current selection without restarting
+capture. Omit the argument to restore the built-in renderer. The previous
+renderer's cleanup runs first. See [request details](details.md).

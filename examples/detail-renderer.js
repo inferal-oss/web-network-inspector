@@ -1,5 +1,5 @@
 const styles = `
-.demo-detail-card { margin: 0 0 14px; padding: 12px 14px; border: 1px solid #c5d5f5; border-left: 3px solid var(--brand, #2463cb); border-radius: 8px; background: var(--brand-soft, #e9f1ff); color: var(--ink, #202938); font-family: var(--sans, system-ui, sans-serif); }
+.demo-detail-card { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--line,#c5d5f5); border-left: 3px solid var(--brand, #2463cb); border-radius: 8px; background: var(--brand-soft, #e9f1ff); color: var(--ink, #202938); font-family: var(--sans, system-ui, sans-serif); }
 .demo-detail-card header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .demo-detail-card .demo-detail-kicker { font-size: var(--text-10,10px); color: var(--brand-dark,#164da8); font-weight: 700; letter-spacing: .06em; }
 .demo-detail-card h3 { font: 650 var(--text-13,13px)/1.5 var(--sans,system-ui,sans-serif); margin: 4px 0 6px; }

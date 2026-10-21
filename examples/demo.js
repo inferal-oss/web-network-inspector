@@ -1,3 +1,4 @@
+import { themeStyles } from "./themes.js";
 import { renderDemoDetails } from "./detail-renderer.js";
 import {
   activityInsight,
@@ -36,22 +37,30 @@ const definitions = [
         render(entry, context) {
           code(entry, context);
           context.container.style.color =
-            Number(context.container.textContent) >= 400 ? "#a12235" : "";
+            Number(context.container.textContent) >= 400
+              ? "var(--demo-error, #a12235)"
+              : "";
         },
       }
     : column,
 );
+let customDetailsEnabled = true;
+try {
+  customDetailsEnabled =
+    localStorage.getItem("web-network-inspector-demo:custom-details") !== "off";
+} catch {}
+function renderDetails(context) {
+  syncDetailsDisplay(context.document);
+  if (customDetailsEnabled) return renderDemoDetails(context);
+  context.renderDefault();
+}
 const inspector = await createPersistentInspector({
   columns: definitions,
   storage: createWebStorage({ key: "web-network-inspector-demo:view-v1" }),
   store,
   open: true,
   resourcePreviews: "on-select",
-  renderDetails(context) {
-    const cleanup = renderDemoDetails(context);
-    syncDetailsDisplay(context.document);
-    return cleanup;
-  },
+  renderDetails,
 });
 window.addEventListener("pagehide", () => {
   void store.persistence.flush().catch(() => {});
@@ -62,7 +71,7 @@ let environment = "Sandbox";
 // A native select: the inspector accepts application-owned DOM elements.
 const environmentControl = document.createElement("label");
 environmentControl.style.cssText =
-  "display:flex;align-items:center;gap:6px;white-space:nowrap;color:#566477";
+  "display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--muted)";
 environmentControl.append("Environment");
 const environmentSelect = document.createElement("select");
 environmentSelect.setAttribute("aria-label", "Demo environment");
@@ -88,7 +97,7 @@ environmentSelect.addEventListener("change", () => {
 const counter = document.createElement("span");
 counter.setAttribute("aria-live", "polite");
 counter.style.cssText =
-  "border:1px solid #cdd9ee;border-radius:20px;padding:4px 9px;color:#2456ac;background:#edf3ff;font:var(--text-10) ui-monospace,monospace;white-space:nowrap";
+  "border:1px solid var(--line);border-radius:20px;padding:4px 9px;color:var(--brand-dark);background:var(--brand-soft);font:var(--text-10) ui-monospace,monospace;white-space:nowrap";
 inspector.addBarItem({ id: "event-count", element: counter });
 const updateCounter = () => {
   const events = inspector.store.entries.filter(
@@ -112,10 +121,10 @@ inspector.addBarItem({
         const badge = document.createElement("p");
         badge.textContent = "● CONNECTED · LOCAL EXAMPLE";
         badge.style.cssText =
-          "color:#21715e;font:600 var(--text-10) ui-monospace,monospace;letter-spacing:.06em";
+          "color:var(--demo-green,#21715e);font:600 var(--text-10) ui-monospace,monospace;letter-spacing:.06em";
         const text = document.createElement("p");
         text.textContent = `Environment: ${environment}. This popup is supplied by the application, using the inspector's public extension API.`;
-        text.style.cssText = "color:#65738b;line-height:1.7";
+        text.style.cssText = "color:var(--muted);line-height:1.7";
         const button = document.createElement("button");
         button.textContent = "Record a check";
         button.addEventListener("click", () => {
@@ -351,9 +360,7 @@ if (window.inferalDisplay && window.mountInferalDisplay) {
         "--brand-soft",
       ])
         inspector.host.style.removeProperty(key);
-    const frame = inspector.root.querySelector(".network-detail-frame");
-    if (frame?.contentDocument?.documentElement)
-      syncDetailsDisplay(frame.contentDocument);
+    applyDemoTheme(false);
     if (profile !== previous) {
       inspector.recordEvent({
         type: "display.changed",
@@ -365,7 +372,7 @@ if (window.inferalDisplay && window.mountInferalDisplay) {
     }
   }
   const off = display.subscribe(apply);
-  apply();
+  queueMicrotask(apply);
   window.addEventListener(
     "pagehide",
     () => {
@@ -377,25 +384,24 @@ if (window.inferalDisplay && window.mountInferalDisplay) {
 }
 
 function syncDetailsDisplay(document) {
-  const style = getComputedStyle(inspector.host);
-  for (const key of [
-    "--panel",
-    "--paper",
-    "--ink",
-    "--muted",
-    "--line",
-    "--brand",
-    "--brand-dark",
-    "--brand-soft",
-    "--signal",
-    "--sans",
-    "--mono",
-    ...[10, 11, 12, 13, 14, 21, 22].map((size) => `--text-${size}`),
-  ])
-    document.documentElement.style.setProperty(
-      key,
-      style.getPropertyValue(key),
-    );
+  const computed = getComputedStyle(inspector.host);
+  const html = document.documentElement;
+  for (const key of Array.from(html.style))
+    if (key.startsWith("--")) html.style.removeProperty(key);
+  for (let i = 0; i < computed.length; i++) {
+    const key = computed[i];
+    if (key.startsWith("--"))
+      html.style.setProperty(key, computed.getPropertyValue(key));
+  }
+  html.dataset.demoEffective =
+    inspector.host.dataset.demoEffective || "default";
+  html.style.colorScheme = computed.colorScheme;
+  if (!document.getElementById("demo-theme-styles")) {
+    const style = document.createElement("style");
+    style.id = "demo-theme-styles";
+    style.textContent = themeStyles;
+    document.head.append(style);
+  }
 }
 
 // Every visible column, including defaults, is supplied through the public API.
@@ -448,7 +454,9 @@ function applyColumns() {
           ? (entry, context) => {
               code(entry, context);
               context.container.style.color =
-                Number(context.container.textContent) >= 400 ? "#a12235" : "";
+                Number(context.container.textContent) >= 400
+                  ? "var(--demo-error, #a12235)"
+                  : "";
             }
           : column.render,
     })),
@@ -477,42 +485,106 @@ const offView = inspector.subscribeView(syncColumnControls);
 syncColumnControls();
 window.addEventListener("pagehide", offView, { once: true });
 
-// Host tokens reach Shadow DOM and are copied into the details iframe above.
-// Open Regard applies inline overrides, so clarity/contrast takes precedence.
+// The same theme rules apply in the shadow root and details document.
 const themeStyle = document.createElement("style");
-themeStyle.textContent = `
-  :host([data-demo-theme="plum"]) {
-    --panel: #fffdfd; --paper: #faf5ff; --ink: #312044;
-    --muted: #705c80; --line: #dfd1ee; --brand: #7c3aed;
-    --brand-dark: #6024b5; --brand-soft: #efe5ff; --signal: #a72d73;
-  }
-  :host([data-demo-theme="plum"]) .network-bar {
-    border-top: 3px solid var(--brand);
-    background: linear-gradient(110deg, var(--paper), var(--brand-soft));
-  }
-  :host([data-demo-theme="plum"]) .network-popup { border-radius: 18px; }
-  :host([data-demo-theme="plum"]) .network-bar button { border-radius: 9px; }
-`;
+themeStyle.textContent = themeStyles;
 inspector.root.append(themeStyle);
 const themeToggle = document.getElementById("theme-toggle");
-function applyDemoTheme() {
-  inspector.host.dataset.demoTheme = themeToggle.checked ? "plum" : "default";
-  document.getElementById("theme-result").textContent = themeToggle.checked
-    ? "Plum theme · host tokens + shadow-root overrides · live details styling"
-    : "Default inspector styling";
+const darkToggle = document.getElementById("theme-dark");
+const customView = document.getElementById("details-toggle");
+customView.checked = customDetailsEnabled;
+function applyDemoTheme(save = true) {
+  const choice = darkToggle.checked
+    ? "dark"
+    : themeToggle.checked
+      ? "plum"
+      : "default";
+  const profile = window.inferalDisplay?.getSnapshot();
+  const effective = ["clarity", "contrast"].includes(profile)
+    ? "default"
+    : choice;
+  inspector.host.dataset.demoTheme = choice;
+  inspector.host.dataset.demoEffective = effective;
+  inspector.host.style.colorScheme = effective === "dark" ? "dark" : "light";
+  document.getElementById("theme-result").textContent =
+    (choice === "dark"
+      ? "Midnight dark theme"
+      : choice === "plum"
+        ? "Plum theme"
+        : "Default inspector styling") +
+    (effective !== choice
+      ? " · display contrast takes precedence"
+      : " · includes previews and custom columns");
   const frame = inspector.root.querySelector(".network-detail-frame");
   if (frame?.contentDocument?.documentElement)
     syncDetailsDisplay(frame.contentDocument);
+  inspector.setDetailsRenderer(renderDetails);
+  if (save)
+    try {
+      localStorage.setItem("web-network-inspector-demo:theme", choice);
+    } catch {}
+}
+function syncCustomView() {
+  customDetailsEnabled = customView.checked;
+  inspector.setDetailsRenderer(renderDetails);
+  document.getElementById("details-result").textContent = customDetailsEnabled
+    ? "Custom summary + default headers and body previews"
+    : "Default details renderer · custom summary off";
   try {
     localStorage.setItem(
-      "web-network-inspector-demo:theme",
-      themeToggle.checked ? "plum" : "default",
+      "web-network-inspector-demo:custom-details",
+      customDetailsEnabled ? "on" : "off",
     );
-  } catch {} // The demo remains usable when browser storage is blocked.
+  } catch {}
 }
 try {
-  themeToggle.checked =
-    localStorage.getItem("web-network-inspector-demo:theme") === "plum";
+  const choice = localStorage.getItem("web-network-inspector-demo:theme");
+  themeToggle.checked = choice === "plum";
+  darkToggle.checked = choice === "dark";
 } catch {}
-themeToggle.addEventListener("change", applyDemoTheme);
-applyDemoTheme();
+themeToggle.addEventListener("change", () => {
+  if (themeToggle.checked) darkToggle.checked = false;
+  applyDemoTheme();
+});
+darkToggle.addEventListener("change", () => {
+  if (darkToggle.checked) themeToggle.checked = false;
+  applyDemoTheme();
+});
+customView.addEventListener("change", syncCustomView);
+syncCustomView();
+applyDemoTheme(false);
+
+// Native change events stay inside a shadow root, so listen on both surfaces.
+function recordCheckbox(event) {
+  const input = event.target;
+  if (!input.matches?.('input[type="checkbox"]')) return;
+  const rawLabel =
+    input.getAttribute("aria-label") ||
+    input.labels?.[0]?.textContent.trim() ||
+    input.id ||
+    "Checkbox";
+  const label = rawLabel.replace(/\s+/g, " ").trim();
+  inspector.recordEvent({
+    type: "demo.checkbox.changed",
+    label: label + (input.checked ? " · on" : " · off"),
+    correlationId: "demo-settings",
+    data: JSON.stringify({
+      control: input.id || input.dataset.columnChoice || label,
+      label,
+      checked: input.checked,
+      source: input.getRootNode() === inspector.root ? "inspector" : "page",
+      environment,
+    }),
+    parentId: null,
+  });
+}
+document.addEventListener("change", recordCheckbox);
+inspector.root.addEventListener("change", recordCheckbox);
+window.addEventListener(
+  "pagehide",
+  () => {
+    document.removeEventListener("change", recordCheckbox);
+    inspector.root.removeEventListener("change", recordCheckbox);
+  },
+  { once: true },
+);

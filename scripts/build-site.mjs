@@ -40,6 +40,7 @@ export async function buildSite({
     "examples/demo.js",
     "examples/insight-column.js",
     "examples/detail-renderer.js",
+    "examples/themes.js",
     "scripts/screenshot.mjs",
     "examples/style.css",
     "site/site.css",
@@ -96,7 +97,10 @@ export async function buildSite({
       '"./detail-renderer.js"',
       `"./detail-renderer.js?v=${revision}"`,
     );
-  await writeFile(resolve(output, "demo/demo.js"), demoSource);
+  await writeFile(
+    resolve(output, "demo/demo.js"),
+    demoSource.replaceAll('"./themes.js"', `"./themes.js?v=${revision}"`),
+  );
   let demo = await readFile(resolve(output, "demo/index.html"), "utf8");
   demo = demo
     .replace(

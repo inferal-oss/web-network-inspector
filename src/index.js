@@ -223,6 +223,10 @@ export function createInspector({
     host,
     root,
     store,
+    setDetailsRenderer(renderer) {
+      ensure();
+      ui.setDetailsRenderer(renderer);
+    },
     getViewState() {
       ensure();
       return ui.getViewState();

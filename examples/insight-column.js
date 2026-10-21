@@ -75,11 +75,11 @@ export function activityInsight(entry, { container, document }) {
 
 export const insightStyles = `
 .demo-insight { display: flex; align-items: flex-start; flex-direction: column; gap: 2px; padding-block: 0; min-width: 0; }
-.demo-insight-badge { --tone: #164aa5; --wash: #eaf1ff; max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; border: 1px solid color-mix(in srgb, var(--tone) 18%, transparent); border-radius: 5px; padding: 1px 6px; background: var(--wash); color: var(--tone); font: 700 var(--text-10)/1.1 var(--mono); }
-.demo-insight[data-tone="green"] .demo-insight-badge { --tone: #075d3c; --wash: #e4f7ed; }
-.demo-insight[data-tone="amber"] .demo-insight-badge { --tone: #7d4400; --wash: #fff3d3; }
-.demo-insight[data-tone="red"] .demo-insight-badge { --tone: #a12235; --wash: #ffeaed; }
-.demo-insight[data-tone="pink"] .demo-insight-badge { --tone: #9b234d; --wash: #ffe8f1; }
-.demo-insight[data-tone="violet"] .demo-insight-badge { --tone: #623da0; --wash: #f0eaff; }
+.demo-insight-badge { --tone: var(--demo-blue,#164aa5); --wash: var(--demo-blue-wash,#eaf1ff); max-width: 100%; display: inline-block; overflow: hidden; text-overflow: ellipsis; border: 1px solid color-mix(in srgb, var(--tone) 18%, transparent); border-radius: 5px; padding: 1px 6px; background: var(--wash); color: var(--tone); font: 700 var(--text-10)/1.1 var(--mono); }
+.demo-insight[data-tone="green"] .demo-insight-badge { --tone: var(--demo-green,#075d3c); --wash: var(--demo-green-wash,#e4f7ed); }
+.demo-insight[data-tone="amber"] .demo-insight-badge { --tone: var(--demo-amber,#7d4400); --wash: var(--demo-amber-wash,#fff3d3); }
+.demo-insight[data-tone="red"] .demo-insight-badge { --tone: var(--demo-red,#a12235); --wash: var(--demo-red-wash,#ffeaed); }
+.demo-insight[data-tone="pink"] .demo-insight-badge { --tone: var(--demo-pink,#9b234d); --wash: var(--demo-pink-wash,#ffe8f1); }
+.demo-insight[data-tone="violet"] .demo-insight-badge { --tone: var(--demo-violet,#623da0); --wash: var(--demo-violet-wash,#f0eaff); }
 .demo-insight-meta { max-width: 100%; color: var(--muted); overflow: hidden; text-overflow: ellipsis; font: var(--text-10)/1.3 var(--mono); }
 `;

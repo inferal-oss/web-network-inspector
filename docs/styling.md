@@ -170,9 +170,70 @@ rounded controls inside the shadow root, and copies current variables into the
 open details iframe. Switch back to compare with the defaults. The demo
 remembers this application-owned switch separately from inspector view settings.
 
-The theme uses `:host([data-demo-theme="plum"])` rules added through
+The theme uses `:host([data-demo-effective="plum"])` rules added through
 `inspector.root.append(style)`. The accompanying card shows copyable CSS. Open
 Regard's clarity and contrast profiles use inline host variables, which take
 precedence over these stylesheet rules. See [the demo source](https://github.com/inferal-oss/web-network-inspector/blob/main/examples/demo.js)
 for the switch and live iframe synchronization. This theme is a demonstration,
 not an additional built-in inspector option.
+
+## Complete dark styling in the demo
+
+Choose **Use the dark Midnight theme** in the demo. It covers panel surfaces,
+controls, popups, custom Activity Insight badges, error codes, the application
+summary, headers, JSON trees, hex previews, and syntax-highlighted source. Plum
+and Midnight are mutually exclusive; turning both off restores default styling.
+The choice is saved in the application's localStorage. Open Regard's Clarity
+and Contrast profiles temporarily use a light palette; Standard and Vision
+restore the chosen theme.
+
+The [theme module](https://github.com/inferal-oss/web-network-inspector/blob/main/examples/themes.js)
+contains complete palettes and shared CSS. Changing only `--panel` and `--ink`
+leaves fixed token colors unchanged, so a complete theme needs variables and
+targeted rules:
+
+```css
+/* Install in the shadow root. */
+:host([data-demo-effective="dark"]) {
+  color-scheme: dark;
+  --panel: #141c2b;
+  --paper: #1c273b;
+  --ink: #e7edf8;
+  --muted: #b4c2d8;
+  --line: #41516b;
+  --brand: #a8bdff;
+  --brand-dark: #c5d2ff;
+  --brand-soft: #293856;
+}
+:host([data-demo-effective="dark"]) .network-json-string {
+  color: #9be5c5;
+}
+:host([data-demo-effective="dark"]) .hljs-keyword {
+  color: #d5b9ff;
+}
+```
+
+Shadow-root styles do not enter the details iframe. Install matching rules
+there using `:root[data-demo-effective="dark"]`, copy host custom properties,
+and set that document's `color-scheme`. The demo's `syncDetailsDisplay(document)`
+does this before rendering and on theme changes. It removes old copied
+properties so palettes switch cleanly, then redraws the current selection with
+`setDetailsRenderer`. These are application examples, rather than new built-in
+theme options.
+
+Custom column badges use application-owned properties such as `--demo-pink`
+and `--demo-pink-wash`. Their light fallbacks live in the
+[column source](https://github.com/inferal-oss/web-network-inspector/blob/main/examples/insight-column.js);
+Midnight supplies light text and dark backgrounds. Theme changes update their
+CSS without recreating the columns.
+
+The default HTML preview gives unstyled content the surrounding text colors,
+canvas, and color scheme when rendered. Authored HTML styles and image/video
+pixels keep their original appearance. HTML stays in its opaque sandbox with
+scripts and external loads disabled.
+
+Use **Use custom details view** to compare the custom summary with the default
+renderer; this switch is also remembered. Native checkbox changes on the page
+and inside the inspector publish `demo.checkbox.changed` events with `control`,
+`label`, `checked`, `source`, and `environment` fields. Programmatic restoration
+does not publish these events. Capture filters and recording pause still apply.

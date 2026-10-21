@@ -1197,7 +1197,10 @@ test("demo theme updates host, selected details, persists, and respects display 
     await frame
       .getByRole("region", { name: "Custom application summary" })
       .waitFor();
-    const theme = page.getByLabel("Use the custom Plum theme");
+    const theme = page.getByRole("checkbox", {
+      name: "Use the custom Plum theme",
+      exact: true,
+    });
     await theme.check();
     const colors = () =>
       page.evaluate(() => {
@@ -1227,4 +1230,216 @@ test("demo theme updates host, selected details, persists, and respects display 
     await theme.uncheck();
     assert.notEqual((await colors())[0], "#7c3aed");
     assert.equal((await colors())[0], (await colors())[1]);
+  }));
+
+test("Midnight themes custom columns, JSON and source previews, HTML canvases, and survives reload", () =>
+  fixture(async (page) => {
+    await page
+      .getByRole("button", { name: "Try custom columns", exact: true })
+      .click();
+    await page
+      .getByRole("checkbox", {
+        name: "Use the dark Midnight theme",
+        exact: true,
+      })
+      .check();
+    await page
+      .getByRole("button", { name: "Record an application event", exact: true })
+      .click();
+    await page.getByRole("button", { name: /Saved a draft/ }).click();
+    const frame = page.frameLocator(".network-detail-frame");
+    await frame.locator(".network-json-string").first().waitFor();
+    assert.equal(
+      await frame
+        .locator("body")
+        .evaluate((n) => getComputedStyle(n).backgroundColor),
+      "rgb(20, 28, 43)",
+    );
+    assert.equal(
+      await frame
+        .locator(".network-json-string")
+        .first()
+        .evaluate((n) => getComputedStyle(n).color),
+      "rgb(155, 229, 197)",
+    );
+    const badge = page
+      .locator('.demo-insight[data-tone="pink"] .demo-insight-badge')
+      .first();
+    assert.equal(
+      await badge.evaluate((n) => getComputedStyle(n).backgroundColor),
+      "rgb(71, 38, 63)",
+    );
+    assert.equal(
+      await badge.evaluate((n) => getComputedStyle(n).color),
+      "rgb(255, 182, 209)",
+    );
+    const contrast = await badge.evaluate((n) => {
+      const luminance = (color) => {
+        const [r, g, b] = color
+          .match(/[\d.]+/g)
+          .slice(0, 3)
+          .map(Number)
+          .map((x) => x / 255)
+          .map((x) =>
+            x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4,
+          );
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      const css = getComputedStyle(n),
+        a = luminance(css.color),
+        b = luminance(css.backgroundColor);
+      return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    });
+    assert.ok(
+      contrast >= 4.5,
+      "Dark custom column text has normal-text contrast",
+    );
+    await page.route("**/dark-preview.js", (route) =>
+      route.fulfill({
+        contentType: "application/javascript",
+        body: 'const greeting = "Night"; // hello',
+      }),
+    );
+    await page.evaluate(() => fetch("/dark-preview.js").then((r) => r.text()));
+    await page.getByRole("button", { name: /Jump to latest/ }).click();
+    await page.getByRole("button", { name: /GET \/dark-preview.js/ }).click();
+    await frame.locator(".hljs-string").waitFor();
+    assert.equal(
+      await frame
+        .locator(".hljs-string")
+        .evaluate((n) => getComputedStyle(n).color),
+      "rgb(155, 229, 197)",
+    );
+    await page.route("**/dark-preview.html", (route) =>
+      route.fulfill({
+        contentType: "text/html",
+        body: "<h1>Night preview</h1><script>window.executed = true</script>",
+      }),
+    );
+    await page.evaluate(() =>
+      fetch("/dark-preview.html").then((r) => r.text()),
+    );
+    await page.getByRole("button", { name: /Jump to latest/ }).click();
+    await page.getByRole("button", { name: /GET \/dark-preview.html/ }).click();
+    const html = frame.frameLocator(".network-html-preview");
+    await html.getByRole("heading", { name: "Night preview" }).waitFor();
+    assert.equal(
+      await html
+        .locator("body")
+        .evaluate((n) => getComputedStyle(n).backgroundColor),
+      "rgb(20, 28, 43)",
+    );
+    assert.equal(
+      await frame.locator(".network-html-preview").getAttribute("sandbox"),
+      "",
+    );
+    await page
+      .getByRole("checkbox", { name: "Use custom details view", exact: true })
+      .uncheck();
+    assert.equal(await frame.locator(".demo-detail-card").count(), 0);
+    await frame.locator(".network-html-preview").waitFor();
+    await page
+      .getByRole("checkbox", { name: "Use custom details view", exact: true })
+      .check();
+    await frame.locator(".demo-detail-card").waitFor();
+    await page.evaluate(() => window.inferalDisplay.setProfile("contrast"));
+    assert.equal(
+      await frame
+        .locator("body")
+        .evaluate((n) => getComputedStyle(n).backgroundColor),
+      "rgb(255, 255, 255)",
+    );
+    await page.evaluate(() => window.inferalDisplay.setProfile("standard"));
+    assert.equal(
+      await frame
+        .locator("body")
+        .evaluate((n) => getComputedStyle(n).backgroundColor),
+      "rgb(20, 28, 43)",
+    );
+    await page
+      .getByRole("checkbox", { name: "Use custom details view", exact: true })
+      .uncheck();
+    await page.reload();
+    await page.waitForFunction(() => window.inspector);
+    assert.equal(
+      await page
+        .getByRole("checkbox", {
+          name: "Use the dark Midnight theme",
+          exact: true,
+        })
+        .isChecked(),
+      true,
+    );
+    assert.equal(
+      await page
+        .getByRole("checkbox", { name: "Use custom details view", exact: true })
+        .isChecked(),
+      false,
+    );
+    await page.getByRole("button", { name: /Saved a draft/ }).click();
+    await frame.locator(".network-json-tree").waitFor();
+    assert.equal(await frame.locator(".demo-detail-card").count(), 0);
+    await page
+      .getByRole("checkbox", {
+        name: "Use the dark Midnight theme",
+        exact: true,
+      })
+      .uncheck();
+    assert.equal(
+      await frame
+        .locator("body")
+        .evaluate((n) => getComputedStyle(n).backgroundColor),
+      "rgb(255, 255, 255)",
+    );
+  }));
+
+test("demo checkbox changes publish one labeled event with state from page and shadow controls", () =>
+  fixture(async (page) => {
+    const cases = [
+      ["Use the dark Midnight theme", "page"],
+      ["Use custom details view", "page"],
+      ["Size sorting", "page"],
+      ["Previous page loads", "inspector"],
+      ["Follow waterfall", "inspector"],
+    ];
+    for (const [label, source] of cases) {
+      const before = await page.evaluate(
+        () =>
+          window.inspector.store.entries.filter(
+            (e) => e.eventType === "demo.checkbox.changed",
+          ).length,
+      );
+      const input = page.getByLabel(label, { exact: true });
+      const checked = await input.isChecked();
+      await input.setChecked(!checked);
+      const events = await page.evaluate(() =>
+        window.inspector.store.entries
+          .filter((e) => e.eventType === "demo.checkbox.changed")
+          .map((e) => ({
+            label: e.label,
+            data: JSON.parse(new TextDecoder().decode(e.body.bytes)),
+          })),
+      );
+      assert.equal(events.length, before + 1);
+      assert.equal(events.at(-1).data.checked, !checked);
+      assert.equal(events.at(-1).data.source, source);
+      assert.equal(events.at(-1).data.label, label);
+    }
+    await page
+      .getByRole("group", { name: "Visible columns", exact: true })
+      .getByLabel("HTTP code", { exact: true })
+      .uncheck();
+    assert.equal(
+      await page.evaluate(
+        () =>
+          JSON.parse(
+            new TextDecoder().decode(
+              window.inspector.store.entries
+                .filter((e) => e.eventType === "demo.checkbox.changed")
+                .at(-1).body.bytes,
+            ),
+          ).control,
+      ),
+      "code",
+    );
   }));

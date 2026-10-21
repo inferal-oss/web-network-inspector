@@ -103,7 +103,7 @@ its cleanup function. `renderDefault()` manages that cleanup for you.
 The React component accepts the same `renderDetails` prop. Keep the callback
 stable with `useCallback`; changing its identity recreates the inspector.
 
-Restored entries show **Previous page** for their start time and retain their absolute capture timestamp. The range label identifies history from previous page loads.
+Restored entries show **Previous page** for their start time and retain their absolute capture timestamp. The Previous page loads checkbox controls whether restored entries appear.
 
 ## Try the application's custom renderer
 
@@ -113,5 +113,27 @@ show their level, environment, and correlation; requests show duration and
 payload size; WebSocket frames show direction. The renderer calls
 `context.renderDefault()` after appending its own card, preserving the standard
 headers and body previews. See the [complete renderer source](https://github.com/inferal-oss/web-network-inspector/blob/main/examples/detail-renderer.js)
-for DOM creation, scoped styles, and cleanup. The demo's Plum theme switch also
+for DOM creation, scoped styles, and cleanup. The demo's theme controls also
 updates CSS variables in the already-open iframe.
+
+## Change the renderer without restarting capture
+
+Use `inspector.setDetailsRenderer(renderer)` to replace the callback and redraw
+the selected entry. The previous renderer's cleanup runs first. Omit the
+argument to restore the built-in view:
+
+```js
+inspector.setDetailsRenderer(myApplicationRenderer);
+inspector.setDetailsRenderer(); // Built-in metadata, headers, and body previews.
+```
+
+The current selection, capture store, columns, and iframe are preserved. The
+new callback follows the same synchronous contract as `renderDetails`.
+Invalid values throw before replacing the current renderer. The React ref
+exposes this method too; use it when switching views on a mounted instance.
+
+In the demo, **Use custom details view** turns the summary off or back on while
+keeping default headers and bodies available. This application-owned switch is
+remembered across reloads. Plum and Midnight styles apply in either mode.
+Checkbox changes publish `demo.checkbox.changed` events with their labels and
+checked state.

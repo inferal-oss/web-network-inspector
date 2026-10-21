@@ -694,6 +694,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     render,
     select,
     getColumns: columnLayout.getColumns,
+    setDetailsRenderer: detailView.setRenderer,
     getViewState,
     getIncludePreviousPageLoads: () => previousLoads.checked,
     setIncludePreviousPageLoads,
