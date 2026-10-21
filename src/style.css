@@ -254,6 +254,16 @@ svg {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.network-row-label,
+.network-row-host {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+.network-row-host {
+  color: var(--muted);
+}
 .network-row[data-kind="event"] {
   color: var(--signal, #b63460);
 }

@@ -45,6 +45,11 @@ test("real browser captures fetch and generic events; selected rows hold through
       .getByRole("button", { name: "Fetch example JSON", exact: true })
       .click();
     await page.getByRole("button", { name: /POST \/anything/ }).waitFor();
+    const host = page
+      .getByRole("button", { name: /POST \/anything/ })
+      .locator(".network-row-host");
+    assert.equal(await host.textContent(), "httpbin.org");
+    assert.equal(await host.isVisible(), true);
     await page.getByRole("button", { name: /POST \/anything/ }).click();
     await page
       .locator("#network-detail")

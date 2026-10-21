@@ -202,6 +202,56 @@ function message(store, text) {
   return entry;
 }
 
+test("activity rows show their host and port, including labeled WebSocket frames", () =>
+  fixture(({ store, get, tick }) => {
+    for (const data of [
+      { kind: "http", method: "GET", url: "https://api.example.com/items" },
+      { kind: "http", method: "GET", url: "https://other.example.com/items" },
+      {
+        kind: "resource",
+        method: "GET",
+        url: "https://cdn.example.com/app.js",
+      },
+      { kind: "socket", url: "wss://socket.example.com:8443/messages" },
+      {
+        kind: "message",
+        direction: "in",
+        label: "Echoed message",
+        url: "wss://socket.example.com:8443/messages",
+      },
+      { kind: "http", method: "GET", url: "https://[::1]:8443/items" },
+      { kind: "http", method: "GET", url: "not a URL" },
+      { kind: "http", method: "GET", url: "data:text/plain,hello" },
+    ])
+      store.add(data);
+    store.recordEvent({ label: "Saved a draft" });
+    tick();
+    const rows = get("network-rows").children;
+    assert.deepEqual(
+      rows.map((row) => row.querySelector(".network-row-host").textContent),
+      [
+        "api.example.com",
+        "other.example.com",
+        "cdn.example.com",
+        "socket.example.com:8443",
+        "socket.example.com:8443",
+        "[::1]:8443",
+        "",
+        "",
+        "",
+      ],
+    );
+    assert.equal(rows[0].firstChild.firstChild.textContent, "#1 GET /items");
+    assert.equal(rows[1].firstChild.firstChild.textContent, "#2 GET /items");
+    assert.equal(
+      rows[4].firstChild.firstChild.textContent,
+      "#5 Echoed message",
+    );
+    for (const row of rows.slice(6))
+      assert.equal(row.querySelector(".network-row-host").hidden, true);
+    assert.equal(rows[8].firstChild.firstChild.textContent, "#9 Saved a draft");
+  }));
+
 test("new messages never replace the selected inspector, with waterfall follow enabled or disabled", () =>
   fixture(({ store, get, tick }) => {
     const selected = message(store, "selected message");
@@ -324,7 +374,11 @@ test("unchanged row labels are not replaced during live renders", () =>
     message(store, "first");
     tick();
     const row = get("network-rows").firstChild;
-    const labels = row.children.slice(0, 3),
+    const labels = [
+        row.firstChild.firstChild,
+        row.firstChild.lastChild,
+        ...row.children.slice(1, 3),
+      ],
       writes = labels.map((node) => node.textWrites);
     message(store, "second");
     tick();

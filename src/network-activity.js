@@ -23,6 +23,14 @@ function name(entry) {
     return entry.url;
   }
 }
+function host(entry) {
+  if (entry.kind === "event") return "";
+  try {
+    return new URL(entry.url).host;
+  } catch {
+    return "";
+  }
+}
 export function activitySize(entry) {
   const size =
     entry.body?.size ?? entry.responseBody?.size ?? entry.transferSize;
@@ -666,6 +674,10 @@ export function setupNetworkActivity(root, scope, store) {
           "network-track",
         ])
           row.append(element("span", cls));
+        row.firstChild.append(
+          element("span", "network-row-label"),
+          element("span", "network-row-host"),
+        );
         const id = entry.id;
         row.lastChild.append(element("i"));
         listen(row, "click", () => select(id));
@@ -678,7 +690,11 @@ export function setupNetworkActivity(root, scope, store) {
         );
       previous = row;
       const label = name(entry);
-      text(row.children[0], `#${entry.id} ${label}`);
+      text(row.firstChild.firstChild, `#${entry.id} ${label}`);
+      const rowHost = row.firstChild.lastChild,
+        hostname = host(entry);
+      text(rowHost, hostname);
+      rowHost.hidden = !hostname;
       row.title = entry.url ? `${label}\n${entry.url}` : label;
       text(
         row.children[1],
