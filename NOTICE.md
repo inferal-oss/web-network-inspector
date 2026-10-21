@@ -3,10 +3,11 @@
 The initial capture, waterfall, JSON preview, markup, styles, and regression
 tests were adapted from an existing web inspector at source revision
 `da56bd1be9cddf20483fa6372cf8010965ed9595`. The source package declares
-`MIT OR Apache-2.0`; this distribution selects the MIT option. The copied files
+`MIT OR Apache-2.0`; this distribution offers the same license choice. The copied files
 contain no separate copyright headers or third-party notices. Original authors
 retain copyright in their contributions. The source repository and its history
-are not part of this distribution.
+are not part of this distribution. The adaptations and additions in this
+repository are also offered under `MIT OR Apache-2.0`.
 
 This library has no runtime npm dependencies. The default preview renderer
 lazily loads a vendored browser build of highlight.js 11.11.1, including its

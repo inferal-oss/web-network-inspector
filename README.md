@@ -104,7 +104,8 @@ Tests run independently of any backend. Browser tests start a loopback server
 on a free port and close it afterward. The package export list includes only
 library files, public documentation, and license notices.
 
-MIT licensed. See [LICENSE](LICENSE) and [provenance and notices](NOTICE.md).
+Licensed under either [Apache-2.0](LICENSE-APACHE) or [MIT](LICENSE-MIT), at your
+option (`MIT OR Apache-2.0`). See [provenance and third-party notices](NOTICE.md).
 
 ## Interactive demo
 

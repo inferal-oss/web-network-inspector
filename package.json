@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "An extensible in-page network waterfall with bounded local capture.",
   "type": "module",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "engines": {
     "node": ">=22.5"
   },
@@ -18,6 +18,8 @@
     "src",
     "README.md",
     "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
     "NOTICE.md",
     "docs"
   ],
