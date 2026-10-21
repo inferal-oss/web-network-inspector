@@ -101,26 +101,45 @@
             <span class="step">04 / MAKE IT YOURS</span>
             <h2 id="columns-title">Your data. Your columns.</h2>
             <p>
-              Add a Transport column and replace the HTTP code renderer. Every
-              column is a function receiving the retained entry. Drag the header
-              dividers to make room for a full path.
+              Show or hide any column. Add Activity Insight for colorful latency
+              badges, frame directions, payload sizes, and event correlations
+              from real capture data.
             </p>
+            <fieldset class="column-options">
+              <legend>Visible columns</legend>
+              <div id="column-choices"></div>
+            </fieldset>
           </div>
           <div>
-            <button id="columns-toggle" aria-pressed="false">
-              Try custom columns
-            </button>
+            <div class="socket-actions">
+              <button id="columns-toggle" aria-pressed="false">
+                Try custom columns</button
+              ><button id="columns-reset">Reset columns</button>
+            </div>
             <p id="columns-result" class="result" role="status">
-              Default columns · drag a divider to resize
+              5 columns visible · drag any header divider to resize
             </p>
+            <fieldset class="column-options">
+              <legend>Sortable columns</legend>
+              <label
+                ><input type="checkbox" id="column-sort-size" checked /> Size
+                sorting</label
+              ><label
+                ><input type="checkbox" id="column-sort-insight" checked />
+                Insight sorting</label
+              >
+            </fieldset>
             <details class="columns-example">
               <summary>See the column API</summary>
-              <pre><code class="language-js">inspector.setColumns([
-  ...defaultColumns.slice(0, -1),
-  { id: "kind", label: "Transport", width: 100,
-    render: entry =&gt; entry.kind },
-  defaultColumns.at(-1),
-]);</code></pre>
+              <pre><code class="language-js">const duration = entry =&gt; entry.end == null ? 0 : entry.end - entry.start;
+inspector.setColumns([
+  ...defaultColumns.filter(c =&gt; c.id !== "status"),
+  { id: "latency", label: "Latency", width: 180,
+    render: entry =&gt; entry.end == null ? "In flight"
+      : (entry.end - entry.start).toFixed(0) + " ms",
+    sort: (a, b) =&gt; duration(a) - duration(b) },
+]);
+// Set sort: false to disable a column's sorter.</code></pre>
             </details>
           </div>
         </section>

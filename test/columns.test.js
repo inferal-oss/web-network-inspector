@@ -46,3 +46,43 @@ test("the full highlighter registry resolves MIME types, suffixes, and language 
   ])
     assert.equal(previewLanguage(hljs, mime, url), expected);
 });
+
+test("sort configuration accepts comparators and explicit opt-out; legacy Size resolves to its comparator", async () => {
+  const { sizeSorter } = await import("../src/columns.js");
+  assert.equal(
+    normalizeColumns([{ ...defaultColumns[3], sort: false }])[0].sort,
+    false,
+  );
+  assert.equal(
+    normalizeColumns([{ ...defaultColumns[3], sort: "size" }])[0].sort,
+    sizeSorter,
+  );
+  assert.throws(() => normalizeColumns([{ ...defaultColumns[3], sort: true }]));
+});
+test("custom comparators sort copies in both directions with stable chronological ties", async () => {
+  const { sortActivity } = await import("../src/network-activity.js");
+  const entries = [
+    { id: 1, start: 10, value: 2 },
+    { id: 2, start: 20, value: 1 },
+    { id: 3, start: 30, value: 2 },
+  ];
+  const compare = (a, b) => a.value - b.value;
+  assert.deepEqual(
+    sortActivity(entries, { compare, direction: "descending" }).map(
+      (e) => e.id,
+    ),
+    [1, 3, 2],
+  );
+  assert.deepEqual(
+    sortActivity(entries, { compare, direction: "ascending" }).map((e) => e.id),
+    [2, 1, 3],
+  );
+  assert.deepEqual(
+    entries.map((e) => e.id),
+    [1, 2, 3],
+  );
+  assert.throws(
+    () => sortActivity(entries, { compare: () => NaN, direction: "ascending" }),
+    /finite number/,
+  );
+});

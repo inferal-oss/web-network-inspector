@@ -38,6 +38,8 @@ export async function buildSite({
   await hashDirectory(resolve(root, "src"));
   for (const file of [
     "examples/demo.js",
+    "examples/insight-column.js",
+    "scripts/screenshot.mjs",
     "examples/style.css",
     "site/site.css",
     "site/site.js",
@@ -86,9 +88,9 @@ export async function buildSite({
     filter: (source) => !source.includes("/screenshots"),
   });
   await cp(resolve(root, "src"), resolve(output, runtime), { recursive: true });
-  const demoSource = (
-    await readFile(resolve(output, "demo/demo.js"), "utf8")
-  ).replaceAll("../src/", "../" + runtime + "/");
+  const demoSource = (await readFile(resolve(output, "demo/demo.js"), "utf8"))
+    .replaceAll("../src/", "../" + runtime + "/")
+    .replaceAll('"./insight-column.js"', `"./insight-column.js?v=${revision}"`);
   await writeFile(resolve(output, "demo/demo.js"), demoSource);
   let demo = await readFile(resolve(output, "demo/index.html"), "utf8");
   demo = demo

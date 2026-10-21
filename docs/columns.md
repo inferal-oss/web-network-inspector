@@ -77,7 +77,12 @@ inspector.setColumns(
 ```
 
 Try **Try custom columns** in the [live demo](https://oss.inferal.org/web-network-inspector/demo/). It adds
-a Transport column, wraps the code renderer, and restores the defaults on demand.
+a colorful Activity Insight column and wraps the code renderer. Its badges show
+recorded latency, message direction and size, event types, and correlation IDs.
+Use the visibility checkboxes to hide or restore any column, including defaults.
+At least one remains visible. Reset columns restores the complete default layout.
+The Size sorting and Insight sorting switches demonstrate enabling and disabling
+comparators without removing their columns.
 
 ## Renderer contract
 
@@ -117,20 +122,79 @@ A renderer runs when its entry changes. Set `live: true` to run on each timeline
 refresh, as the built-in waterfall does. Rendering is suspended while browsing
 fixed rows. Avoid side effects and expensive work in live renderers.
 
+## Sorting a column
+
+Set `sort` to a synchronous comparator `(leftEntry, rightEntry) => number`.
+Use the same convention as `Array.sort`: negative puts the left entry first
+in ascending order, positive puts it after, and zero preserves chronological
+order for ties. Return a finite number. The inspector copies the entries
+before sorting, so capture order does not change.
+
+Click a sortable header to cycle **descending → ascending → chronological**.
+Only one column controls ordering at a time. Sorting holds the visible page
+while capture continues. Follow waterfall and Jump to latest restore time order.
+Replacing columns resets sorting. Non-sortable headers have no sort button.
+A comparator failure produces a visible “Sort failed” message and falls back
+to chronological order; capture continues.
+
+`sizeSorter` is the exported comparator used by the default Size definition.
+It compares message bytes, response body bytes, or resource transfer bytes and
+keeps unavailable sizes last in both directions. The legacy `sort: "size"`
+shorthand is also accepted. Defaults other than Size have sorting disabled.
+
+```js
+import { defaultColumns, sizeSorter } from "web-network-inspector";
+const duration = (entry) => (entry.end == null ? 0 : entry.end - entry.start);
+
+inspector.setColumns([
+  ...defaultColumns.map((column) =>
+    column.id === "size"
+      ? { ...column, sort: false } // Hide the Size sort button.
+      : column,
+  ),
+  {
+    id: "latency",
+    label: "Latency",
+    width: 160,
+    render: (entry) => duration(entry).toFixed(0) + " ms",
+    sort: (left, right) => duration(left) - duration(right),
+  },
+]);
+
+// A different column can reuse the default Size comparator.
+const bytesColumn = {
+  id: "bytes",
+  label: "Bytes",
+  width: 100,
+  render: (entry) => entry.responseBody?.size ?? "—",
+  sort: sizeSorter,
+};
+```
+
+The [demo column source](https://github.com/inferal-oss/web-network-inspector/blob/main/examples/insight-column.js)
+contains a complete DOM renderer, scoped styles, and a comparator. The renderer
+creates a colored badge and a second line from the retained entry, using
+`document.createElement` and `textContent`. Its comparator sorts completed
+entries by recorded duration; unfinished entries and point events use zero.
+It labels unavailable sizes and active connections instead of inventing
+measurements. Request latency badges use green below 500 ms, amber from 500 ms
+to 1,999 ms, and red at 2,000 ms or above. These thresholds belong to this demo
+renderer and can be changed in its source.
+
 ## Definition fields
 
-| Field       | Default  | Meaning                                                      |
-| ----------- | -------- | ------------------------------------------------------------ |
-| `id`        | required | Unique, nonempty string                                      |
-| `label`     | required | Header and accessible resize label                           |
-| `render`    | required | Synchronous function described above                         |
-| `width`     | 160      | Initial width in pixels                                      |
-| `minWidth`  | 40       | Resize minimum, at least 24                                  |
-| `maxWidth`  | 2400     | Resize maximum, at most 4000                                 |
-| `flex`      | false    | Grow to use spare space; manual resizing fixes its width     |
-| `live`      | false    | Refresh even when the entry has not changed                  |
-| `className` | empty    | Cell classes inside the inspector's shadow root              |
-| `sort`      | unset    | `"size"` enables the built-in size sort button in the header |
+| Field       | Default  | Meaning                                                  |
+| ----------- | -------- | -------------------------------------------------------- |
+| `id`        | required | Unique, nonempty string                                  |
+| `label`     | required | Header and accessible resize label                       |
+| `render`    | required | Synchronous function described above                     |
+| `width`     | 160      | Initial width in pixels                                  |
+| `minWidth`  | 40       | Resize minimum, at least 24                              |
+| `maxWidth`  | 2400     | Resize maximum, at most 4000                             |
+| `flex`      | false    | Grow to use spare space; manual resizing fixes its width |
+| `live`      | false    | Refresh even when the entry has not changed              |
+| `className` | empty    | Cell classes inside the inspector's shadow root          |
+| `sort`      | unset    | Comparator function enables sorting; false disables it   |
 
 Provide 1–24 columns and finite widths within their bounds. Invalid arrays are
 rejected before replacing the current layout or installing capture. Widths are

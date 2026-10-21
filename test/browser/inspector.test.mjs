@@ -674,13 +674,16 @@ test("columns resize by pointer and keyboard, expose HTTP codes, and support cus
       .getByRole("button", { name: "Try custom columns", exact: true })
       .click();
     assert.equal(
-      await request.locator('[data-column="transport"]').textContent(),
-      "Fetch / XHR",
+      await request
+        .locator('[data-column="insight"]')
+        .locator(".demo-insight-meta")
+        .textContent(),
+      "111 B · json",
     );
     await page
-      .getByRole("button", { name: "Restore default columns", exact: true })
+      .getByRole("button", { name: "Hide Activity Insight", exact: true })
       .click();
-    assert.equal(await request.locator('[data-column="transport"]').count(), 0);
+    assert.equal(await request.locator('[data-column="insight"]').count(), 0);
     await page.evaluate(() => {
       window.columnClicks = 0;
       window.columnCleanups = 0;
@@ -800,4 +803,168 @@ test("default previews color CSS, Python, and escaped HTML source without changi
       assert.equal(await pre.locator("img,script").count(), 0);
     }
     assert.equal(await page.evaluate(() => window.injected), undefined);
+  }));
+
+test("each column can enable a comparator or disable sorting; direction cycles and errors do not interrupt capture", () =>
+  fixture(async (page) => {
+    await page.evaluate(() => {
+      window.inspector.store.clear();
+      window.inspector.setColumns([
+        {
+          id: "label",
+          label: "Label",
+          width: 240,
+          render: (entry) => entry.label,
+          sort: (a, b) => a.label.localeCompare(b.label),
+        },
+      ]);
+      for (const label of ["Bravo", "Alpha", "Charlie"])
+        window.inspector.recordEvent({ label });
+    });
+    await page
+      .getByLabel("Activity type", { exact: true })
+      .selectOption("event");
+    const sorter = page.locator('[data-sort-column="label"]');
+    await sorter.click();
+    assert.deepEqual(
+      await page
+        .locator('.network-row [data-column="label"]')
+        .allTextContents(),
+      ["Charlie", "Bravo", "Alpha"],
+    );
+    await sorter.click();
+    assert.deepEqual(
+      await page
+        .locator('.network-row [data-column="label"]')
+        .allTextContents(),
+      ["Alpha", "Bravo", "Charlie"],
+    );
+    await sorter.click();
+    assert.deepEqual(
+      await page
+        .locator('.network-row [data-column="label"]')
+        .allTextContents(),
+      ["Bravo", "Alpha", "Charlie"],
+    );
+    await page.evaluate(() => {
+      const columns = window.inspector.getColumns();
+      window.inspector.setColumns(columns.map((c) => ({ ...c, sort: false })));
+    });
+    assert.equal(await page.locator('[data-sort-column="label"]').count(), 0);
+    await page.evaluate(() =>
+      window.inspector.setColumns([
+        {
+          id: "bad",
+          label: "Bad",
+          width: 200,
+          render: (e) => e.label,
+          sort: () => {
+            throw Error("Example comparator failure");
+          },
+        },
+      ]),
+    );
+    await page.locator('[data-sort-column="bad"]').click();
+    await page
+      .locator("#network-summary")
+      .getByText(/Sort failed: Example comparator failure/)
+      .waitFor();
+    await page.evaluate(() =>
+      window.inspector.setColumns([
+        {
+          id: "null-error",
+          label: "Null error",
+          width: 180,
+          render: (e) => e.label,
+          sort: () => {
+            throw null;
+          },
+        },
+      ]),
+    );
+    await page.locator('[data-sort-column="null-error"]').click();
+    assert.match(
+      await page.locator("#network-summary").textContent(),
+      /Sort failed: null/,
+    );
+    await page.evaluate(() =>
+      window.inspector.recordEvent({ label: "Recording continues" }),
+    );
+    assert.equal(
+      await page.evaluate(() =>
+        window.inspector.store.entries.some(
+          (e) => e.label === "Recording continues",
+        ),
+      ),
+      true,
+    );
+  }));
+
+test("demo visibility controls compose default and colorful custom columns and keep one column visible", () =>
+  fixture(async (page) => {
+    const choices = page.getByRole("group", {
+      name: "Visible columns",
+      exact: true,
+    });
+    await choices.getByLabel("Status", { exact: true }).uncheck();
+    await choices.getByLabel("HTTP code", { exact: true }).uncheck();
+    assert.equal(
+      await page
+        .getByRole("separator", { name: "Resize Status column", exact: true })
+        .count(),
+      0,
+    );
+    await page
+      .getByRole("button", { name: "Try custom columns", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByRole("separator", {
+          name: "Resize Activity Insight column",
+          exact: true,
+        })
+        .count(),
+      1,
+    );
+    await page
+      .getByRole("button", { name: "Record an application event", exact: true })
+      .click();
+    const cell = page
+      .getByRole("button", { name: /Saved a draft/ })
+      .locator('[data-column="insight"]');
+    await cell.locator('[data-tone="pink"]').waitFor();
+    assert.match(await cell.textContent(), /demo.note.*demo-session/);
+    assert.notEqual(
+      await cell
+        .locator(".demo-insight-badge")
+        .evaluate((n) => getComputedStyle(n).backgroundColor),
+      "rgba(0, 0, 0, 0)",
+    );
+    await page.getByLabel("Insight sorting", { exact: true }).uncheck();
+    assert.equal(await page.locator('[data-sort-column="insight"]').count(), 0);
+    await page.getByLabel("Insight sorting", { exact: true }).check();
+    assert.equal(await page.locator('[data-sort-column="insight"]').count(), 1);
+    await page.getByLabel("Size sorting", { exact: true }).uncheck();
+    assert.equal(await page.locator('[data-sort-column="size"]').count(), 0);
+    for (const name of ["Request / event", "Size", "Waterfall"])
+      await choices.getByLabel(name, { exact: true }).uncheck();
+    assert.equal(
+      await choices.getByLabel("Activity Insight", { exact: true }).isEnabled(),
+      false,
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Hide Activity Insight", exact: true })
+        .isEnabled(),
+      false,
+    );
+    await page
+      .getByRole("button", { name: "Reset columns", exact: true })
+      .click();
+    assert.equal(await page.locator(".network-column-resize").count(), 5);
+    assert.equal(await page.locator('[data-sort-column="size"]').count(), 1);
+    assert.equal(
+      await choices.getByLabel("Status", { exact: true }).isChecked(),
+      true,
+    );
   }));

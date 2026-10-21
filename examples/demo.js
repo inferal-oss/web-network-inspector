@@ -1,4 +1,9 @@
 import {
+  activityInsight,
+  insightSorter,
+  insightStyles,
+} from "./insight-column.js";
+import {
   createInspector,
   createPersistentCapture,
   defaultColumns,
@@ -360,48 +365,97 @@ function syncDetailsDisplay(document) {
     );
 }
 
-// Replace a default renderer, insert a custom cell, and keep the other defaults.
-const customColumns = defaultColumns.flatMap((column) => {
-  if (column.id === "code")
-    return [
-      {
-        ...column,
-        width: 90,
-        render(entry, context) {
-          code(entry, context);
-          if (Number(context.container.textContent) >= 400)
-            context.container.style.color = "#b63460";
-        },
-      },
-    ];
-  if (column.id === "waterfall")
-    return [
-      {
-        id: "transport",
-        label: "Transport",
-        width: 100,
-        render: (entry) =>
-          ({
-            http: "Fetch / XHR",
-            resource: "Resource",
-            socket: "WebSocket",
-            message: "WS frame",
-            event: "App event",
-          })[entry.kind] || entry.kind,
-      },
-      column,
-    ];
-  return [column];
-});
+// Every visible column, including defaults, is supplied through the public API.
+const insightStyle = document.createElement("style");
+insightStyle.textContent = insightStyles;
+inspector.root.append(insightStyle);
+const insightColumn = {
+  id: "insight",
+  label: "Activity Insight",
+  width: 190,
+  minWidth: 140,
+  render: activityInsight,
+  sort: insightSorter,
+};
+const definitions = [
+  ...defaultColumns.slice(0, -1),
+  insightColumn,
+  defaultColumns.at(-1),
+];
+const enabled = new Set(defaultColumns.map((column) => column.id));
+const widths = new Map();
+const choices = document.getElementById("column-choices");
+const controls = new Map();
 const columnsButton = document.getElementById("columns-toggle");
-columnsButton.addEventListener("click", () => {
-  const enabled = columnsButton.getAttribute("aria-pressed") !== "true";
-  inspector.setColumns(enabled ? customColumns : defaultColumns);
-  columnsButton.setAttribute("aria-pressed", String(enabled));
-  columnsButton.textContent = enabled
-    ? "Restore default columns"
+function applyColumns() {
+  for (const column of inspector.getColumns())
+    widths.set(column.id, { width: column.width, flex: column.flex });
+  const showInsight = enabled.has("insight");
+  inspector.setColumns(
+    definitions
+      .filter((column) => enabled.has(column.id))
+      .map((column) => ({
+        ...column,
+        ...widths.get(column.id),
+        sort:
+          (column.id === "size" &&
+            !document.getElementById("column-sort-size").checked) ||
+          (column.id === "insight" &&
+            !document.getElementById("column-sort-insight").checked)
+            ? false
+            : column.sort,
+        render:
+          column.id === "code" && showInsight
+            ? (entry, context) => {
+                code(entry, context);
+                context.container.style.color =
+                  Number(context.container.textContent) >= 400 ? "#a12235" : "";
+              }
+            : column.render,
+      })),
+  );
+  for (const [id, input] of controls) {
+    input.checked = enabled.has(id);
+    input.disabled = enabled.size === 1 && input.checked;
+  }
+  columnsButton.disabled = showInsight && enabled.size === 1;
+  columnsButton.setAttribute("aria-pressed", String(showInsight));
+  columnsButton.textContent = showInsight
+    ? "Hide Activity Insight"
     : "Try custom columns";
-  document.getElementById("columns-result").textContent = enabled
-    ? "Added Transport and replaced the HTTP code renderer. Drag any header divider to resize."
-    : "Default columns restored. Drag any header divider to resize.";
+  document.getElementById("columns-result").textContent = showInsight
+    ? "Activity Insight shows latency, payload sizes, message direction, and event correlation. Click its header to sort by recorded duration."
+    : enabled.size +
+      " columns visible. Resize, hide, or sort them to suit your workflow.";
+}
+for (const column of definitions) {
+  const label = document.createElement("label"),
+    input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = enabled.has(column.id);
+  input.dataset.columnChoice = column.id;
+  input.addEventListener("change", () => {
+    if (input.checked) enabled.add(column.id);
+    else enabled.delete(column.id);
+    applyColumns();
+  });
+  label.append(input, column.label);
+  choices.append(label);
+  controls.set(column.id, input);
+}
+columnsButton.addEventListener("click", () => {
+  if (enabled.has("insight")) enabled.delete("insight");
+  else enabled.add("insight");
+  applyColumns();
 });
+document.getElementById("columns-reset").addEventListener("click", () => {
+  enabled.clear();
+  for (const column of defaultColumns) enabled.add(column.id);
+  widths.clear();
+  inspector.setColumns(defaultColumns);
+  document.getElementById("column-sort-size").checked = true;
+  document.getElementById("column-sort-insight").checked = true;
+  applyColumns();
+});
+for (const id of ["column-sort-size", "column-sort-insight"])
+  document.getElementById(id).addEventListener("change", applyColumns);

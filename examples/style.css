@@ -280,3 +280,35 @@ select {
   font-size: 0.6875rem;
   line-height: 1.7;
 }
+.column-options {
+  border: 0;
+  padding: 0;
+  margin: 16px 0 0;
+  font-size: 0.75rem;
+  color: #526680;
+}
+.column-options legend {
+  font-size: 0.625rem;
+  font-weight: 650;
+  color: #526680;
+  margin-bottom: 9px;
+}
+.column-options,
+#column-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.column-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.column-options input {
+  margin: 0;
+  padding: 0;
+  accent-color: #255fe5;
+  width: 14px;
+  height: 14px;
+}

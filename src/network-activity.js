@@ -1,5 +1,10 @@
-import { activityName as name, setupColumnLayout } from "./columns.js";
-export { timelinePosition } from "./columns.js";
+import {
+  activityName as name,
+  activitySize,
+  sizeSorter,
+  setupColumnLayout,
+} from "./columns.js";
+export { timelinePosition, activitySize } from "./columns.js";
 import { previewParts } from "./network-capture.js";
 import { createDetailView } from "./detail-renderer.js";
 
@@ -13,20 +18,27 @@ const ms = (value) => `${value.toFixed(1)} ms`;
 function text(node, value) {
   if (node.textContent !== value) node.textContent = value;
 }
-export function activitySize(entry) {
-  const size =
-    entry.body?.size ?? entry.responseBody?.size ?? entry.transferSize;
-  return Number.isFinite(size) && size >= 0 ? size : null;
-}
 export function sortActivity(entries, order = "time") {
   const time = (a, b) => a.start - b.start || a.id - b.id;
+  if (!order || order === "time") return [...entries].sort(time);
+  const compare = typeof order === "string" ? sizeSorter : order.compare;
+  const direction =
+    typeof order === "string"
+      ? order === "largest"
+        ? "descending"
+        : "ascending"
+      : order.direction;
   return [...entries].sort((a, b) => {
-    if (order === "time") return time(a, b);
-    const left = activitySize(a),
-      right = activitySize(b);
-    if (left === null || right === null)
-      return left === right ? time(a, b) : left === null ? 1 : -1;
-    return (order === "largest" ? right - left : left - right) || time(a, b);
+    // Keep missing byte counts last when using the built-in sorter.
+    if (
+      compare === sizeSorter &&
+      (activitySize(a) === null || activitySize(b) === null)
+    )
+      return sizeSorter(a, b) || time(a, b);
+    const value = compare(a, b);
+    if (typeof value !== "number" || !Number.isFinite(value))
+      throw new TypeError("Sort comparator must return a finite number.");
+    return value * (direction === "descending" ? -1 : 1) || time(a, b);
   });
 }
 /** Mount the retained waterfall inside an inspector's own root. */
@@ -83,6 +95,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     store,
     columns: options.columns,
     sortSize,
+    onSort: sortColumn,
   });
   cleanup.push(() => columnLayout.destroy());
   const resize = get("network-resize");
@@ -125,7 +138,8 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     dirty = true,
     detailRevision = "",
     timer = null,
-    sizeOrder = "time";
+    sorting = null,
+    sortError = "";
   let view = null,
     frozen = false,
     navigation = null;
@@ -260,7 +274,8 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     selected = null;
     resetView();
     follow.checked = true;
-    sizeOrder = "time";
+    sorting = null;
+    sortError = "";
     renderSortControl();
     detailRevision = "";
     render();
@@ -284,35 +299,28 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
       render();
     });
   function renderSortControl() {
-    sortSize.textContent = `Size ${sizeOrder === "time" ? "↕" : sizeOrder === "largest" ? "↓" : "↑"}`;
-    const label =
-      sizeOrder === "time"
-        ? "Sort by size, largest first"
-        : sizeOrder === "largest"
-          ? "Size: largest first. Sort smallest first"
-          : "Size: smallest first. Restore time order";
-    sortSize.setAttribute("aria-label", label);
-    sortSize.title = label;
-    sortSize.setAttribute("aria-pressed", String(sizeOrder !== "time"));
+    columnLayout.updateSort(sorting);
   }
-  listen(sortSize, "click", () => {
-    sizeOrder =
-      sizeOrder === "time"
-        ? "largest"
-        : sizeOrder === "largest"
-          ? "smallest"
-          : "time";
-    if (sizeOrder !== "time") follow.checked = false;
+  function sortColumn(column) {
+    sorting =
+      sorting?.id !== column.id
+        ? { id: column.id, compare: column.sort, direction: "descending" }
+        : sorting.direction === "descending"
+          ? { ...sorting, direction: "ascending" }
+          : null;
+    sortError = "";
+    if (sorting) follow.checked = false;
     resetView();
     renderSortControl();
     dirty = true;
     render();
     list.scrollTop = 0;
-  });
+  }
   listen(follow, "change", () => {
     if (follow.checked) {
       resetView();
-      sizeOrder = "time";
+      sorting = null;
+      sortError = "";
       renderSortControl();
     } else freezeView();
     dirty = true;
@@ -327,12 +335,8 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     render();
     list.scrollTop = 0;
   }
-  listen(older, "click", () =>
-    navigate(sizeOrder === "time" ? "before" : "after"),
-  );
-  listen(newer, "click", () =>
-    navigate(sizeOrder === "time" ? "after" : "before"),
-  );
+  listen(older, "click", () => navigate(!sorting ? "before" : "after"));
+  listen(newer, "click", () => navigate(!sorting ? "after" : "before"));
   listen(latest, "click", () => {
     selected = null;
     detailRevision = "";
@@ -344,7 +348,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     filter.value = "";
     connection.value = "";
     follow.checked = true;
-    sizeOrder = "time";
+    sorting = null;
     resetView();
     renderSortControl();
     dirty = true;
@@ -426,13 +430,26 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
         `${name(entry)} ${entry.url || ""} ${entry.status || ""} ${entry.correlationId || ""} ${entry.eventType || ""}`
           .toLowerCase()
           .includes(query));
-    const filtered = sortActivity(
-      store.entries.filter(
-        (entry) =>
-          (!filter.value || entry.kind === filter.value) && matches(entry),
-      ),
-      sizeOrder,
-    );
+    let filtered;
+    try {
+      filtered = sortActivity(
+        store.entries.filter(
+          (entry) =>
+            (!filter.value || entry.kind === filter.value) && matches(entry),
+        ),
+        sorting,
+      );
+    } catch (error) {
+      sorting = null;
+      sortError = `Sort failed: ${String(error?.message ?? error).slice(0, 200)}`;
+      renderSortControl();
+      filtered = sortActivity(
+        store.entries.filter(
+          (entry) =>
+            (!filter.value || entry.kind === filter.value) && matches(entry),
+        ),
+      );
+    }
     function bounds(ids) {
       const known = new Set(ids);
       let first = -1,
@@ -444,7 +461,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
         }
       return { first: Math.max(0, first), stop };
     }
-    let first = sizeOrder === "time" ? Math.max(0, filtered.length - 200) : 0,
+    let first = !sorting ? Math.max(0, filtered.length - 200) : 0,
       stop = Math.min(filtered.length, first + 200);
     if (navigation) {
       const anchor = bounds(navigation.ids);
@@ -506,15 +523,13 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
       ? "Paused"
       : "Recording";
     get("network-recording").dataset.paused = String(store.paused);
-    summary.textContent = `${filtered.length} matching · ${bytes(store.bytes)} previews · ${store.expired} entries expired · ${store.expiredPreviews} previews expired · ${browsingStatus}${storageStatus}`;
+    summary.textContent = `${filtered.length} matching · ${bytes(store.bytes)} previews · ${store.expired} entries expired · ${store.expiredPreviews} previews expired · ${browsingStatus}${storageStatus}${sortError ? ` · ${sortError}` : ""}`;
     latest.hidden = !(frozen || browsing());
     text(latest, `${newCount} new · Jump to latest`);
-    older.disabled =
-      sizeOrder === "time" ? first === 0 : stop === filtered.length;
-    newer.disabled =
-      sizeOrder === "time" ? stop === filtered.length : first === 0;
-    older.textContent = sizeOrder === "time" ? "Older" : "Next";
-    newer.textContent = sizeOrder === "time" ? "Newer" : "Previous";
+    older.disabled = !sorting ? first === 0 : stop === filtered.length;
+    newer.disabled = !sorting ? stop === filtered.length : first === 0;
+    older.textContent = !sorting ? "Older" : "Next";
+    newer.textContent = !sorting ? "Newer" : "Previous";
     if (!frozen) list.querySelector(".network-empty")?.remove();
     let previous = null;
     for (const entry of visible) {
@@ -601,6 +616,9 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     getColumns: columnLayout.getColumns,
     setColumns(columns) {
       columnLayout.setColumns(columns);
+      sorting = null;
+      sortError = "";
+      renderSortControl();
       for (const row of rows.values()) row.remove();
       rows.clear();
       resetView();

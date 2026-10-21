@@ -86,6 +86,18 @@ export function waterfall(entry, { container, document, timeline }) {
       : `max(3px, ${pos.width}%)`;
   container.title = `${(entry.start - start).toFixed(1)} ms after timeline start${entry.end != null ? ` · ${(entry.end - entry.start).toFixed(1)} ms` : ""}`;
 }
+export function activitySize(entry) {
+  const value =
+    entry.body?.size ?? entry.responseBody?.size ?? entry.transferSize;
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+/** Ascending byte comparison. The table keeps unavailable sizes last in either direction. */
+export function sizeSorter(left, right) {
+  const a = activitySize(left),
+    b = activitySize(right);
+  if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1;
+  return a - b;
+}
 export const columnRenderers = Object.freeze({
   hostPath,
   status,
@@ -126,7 +138,7 @@ export const defaultColumns = Object.freeze(
       width: 72,
       minWidth: 56,
       className: "network-row-size",
-      sort: "size",
+      sort: sizeSorter,
     },
     {
       id: "waterfall",
@@ -156,6 +168,15 @@ export function normalizeColumns(columns = defaultColumns) {
       throw new TypeError(
         "Columns require unique string IDs, labels, and render functions.",
       );
+    if (
+      column.sort !== undefined &&
+      column.sort !== false &&
+      column.sort !== "size" &&
+      typeof column.sort !== "function"
+    )
+      throw new TypeError(
+        "Column sort must be false or a comparator function.",
+      );
     ids.add(column.id);
     const { width = 160, minWidth = 40, maxWidth = 2400 } = column;
     if (
@@ -169,6 +190,7 @@ export function normalizeColumns(columns = defaultColumns) {
       throw new RangeError("Invalid column width bounds.");
     return {
       ...column,
+      sort: column.sort === "size" ? sizeSorter : column.sort,
       width: Math.round(width),
       minWidth: Math.round(minWidth),
       maxWidth: Math.round(maxWidth),
@@ -176,12 +198,22 @@ export function normalizeColumns(columns = defaultColumns) {
   });
 }
 
-export function setupColumnLayout({ root, scope, store, columns, sortSize }) {
+export function setupColumnLayout({
+  root,
+  scope,
+  store,
+  columns,
+  sortSize,
+  onSort,
+}) {
   const document = root.ownerDocument,
     header = root.getElementById("network-columns"),
     panel = root.getElementById("network-activity");
   let definitions = normalizeColumns(columns),
-    drag = null;
+    drag = null,
+    sorting = null;
+  const buttons = new Map();
+  const boundButtons = new WeakSet();
   const states = new Map();
   function disposeCell(state) {
     const fn = state.cleanup;
@@ -220,13 +252,46 @@ export function setupColumnLayout({ root, scope, store, columns, sortSize }) {
     column.flex = false;
     widths();
   }
+  function updateSort(next) {
+    sorting = next;
+    for (const column of definitions) {
+      const button = buttons.get(column.id);
+      if (!button) continue;
+      const direction = sorting?.id === column.id ? sorting.direction : null;
+      const size = column.sort === sizeSorter;
+      const label = !direction
+        ? `Sort by ${column.label.toLowerCase()}, ${size ? "largest first" : "descending"}`
+        : `${column.label}: ${direction === "descending" ? (size ? "largest first" : "descending") : size ? "smallest first" : "ascending"}. ${direction === "descending" ? (size ? "Sort smallest first" : "Sort ascending") : "Restore time order"}`;
+      button.textContent = `${column.label} ${direction === "descending" ? "↓" : direction === "ascending" ? "↑" : "↕"}`;
+      button.setAttribute("aria-label", label);
+      button.setAttribute("aria-pressed", String(Boolean(direction)));
+      button.title = label;
+    }
+  }
   function headings() {
     header.replaceChildren();
+    buttons.clear();
     for (const column of definitions) {
       const cell = document.createElement("span");
       cell.className = "network-column-heading";
-      if (column.sort === "size") cell.append(sortSize);
-      else cell.textContent = column.label;
+      if (typeof column.sort === "function") {
+        const button =
+          column.id === "size" ? sortSize : document.createElement("button");
+        button.type = "button";
+        button.className = "network-sort";
+        button.dataset.sortColumn = column.id;
+        if (!boundButtons.has(button)) {
+          button.addEventListener("click", () => {
+            const current = definitions.find(
+              (c) => c.id === button.dataset.sortColumn,
+            );
+            if (typeof current?.sort === "function") onSort(current);
+          });
+          boundButtons.add(button);
+        }
+        buttons.set(column.id, button);
+        cell.append(button);
+      } else cell.textContent = column.label;
       const grip = document.createElement("span");
       grip.className = "network-column-resize";
       grip.setAttribute("role", "separator");
@@ -265,6 +330,7 @@ export function setupColumnLayout({ root, scope, store, columns, sortSize }) {
       header.append(cell);
     }
     widths();
+    updateSort(sorting);
   }
   const move = (event) => {
     if (drag) resize(drag.column, drag.width + event.clientX - drag.x);
@@ -278,6 +344,7 @@ export function setupColumnLayout({ root, scope, store, columns, sortSize }) {
   scope.addEventListener("blur", stop);
   headings();
   return {
+    updateSort,
     getColumns: () => definitions.map((c) => ({ ...c })),
     setColumns(next) {
       const valid = normalizeColumns(next);

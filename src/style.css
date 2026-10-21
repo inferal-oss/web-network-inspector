@@ -679,7 +679,7 @@ svg {
 .network-json-end {
   padding-left: 14px;
 }
-#network-sort-size {
+.network-sort {
   padding: 0;
   border: 0;
   background: none;
@@ -688,8 +688,8 @@ svg {
   cursor: pointer;
   white-space: nowrap;
 }
-#network-sort-size:hover,
-#network-sort-size[aria-pressed="true"] {
+.network-sort:hover,
+.network-sort[aria-pressed="true"] {
   color: var(--brand-dark);
 }
 .network-empty > .text-button {

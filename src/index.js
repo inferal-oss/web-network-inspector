@@ -278,4 +278,5 @@ export {
   waterfall,
   columnRenderers,
   defaultColumns,
+  sizeSorter,
 } from "./columns.js";

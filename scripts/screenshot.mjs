@@ -45,6 +45,29 @@ export async function captureScreenshots({
       window.inspector.host.style.setProperty("--network-height", "58vh");
     });
     await page.waitForTimeout(50);
+    await page
+      .getByRole("button", { name: "Try custom columns", exact: true })
+      .click();
+    await page.evaluate(() => {
+      const widths = {
+        hostPath: 260,
+        status: 64,
+        code: 64,
+        size: 60,
+        insight: 170,
+        waterfall: 140,
+      };
+      window.inspector.setColumns(
+        window.inspector.getColumns().map((column) => ({
+          ...column,
+          width: widths[column.id] ?? column.width,
+        })),
+      );
+    });
+    // Leave more room for the custom insight badges in the landing image.
+    await page.evaluate(() =>
+      window.inspector.host.style.setProperty("--network-height", "58vh"),
+    );
     await page.getByRole("button", { name: "Clear", exact: true }).click();
     await page
       .getByRole("button", { name: "Fetch example JSON", exact: true })
@@ -53,17 +76,10 @@ export async function captureScreenshots({
     await page.getByLabel("Demo environment").selectOption("Preview");
     await page.getByLabel("Level", { exact: true }).selectOption("success");
     await page
-      .getByRole("button", { name: "Record an application event", exact: true })
-      .click();
-    await page
       .getByLabel("Event label", { exact: true })
       .fill("Published a preview");
     await page
       .getByRole("button", { name: "Record an application event", exact: true })
-      .click();
-    await page.getByRole("button", { name: "Connection · ready" }).click();
-    await page
-      .getByRole("button", { name: "Record a check", exact: true })
       .click();
     await page.getByRole("button", { name: /Published a preview/ }).click();
     await page

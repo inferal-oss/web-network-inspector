@@ -46,7 +46,7 @@ the store's preview and memory limits.
 
 ### `getColumns()` and `setColumns(columns)`
 
-Read the current column definitions, including resized widths, or replace them
+Read the current column definitions, including resized widths and comparator functions, or replace them
 with a validated array. Defaults and named cell renderers are exported. See
 [waterfall columns](columns.md) for adding, replacing, and resizing columns.
 
