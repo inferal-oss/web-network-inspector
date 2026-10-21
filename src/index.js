@@ -37,6 +37,7 @@ export function createInspector({
   const ui = setupNetworkActivity(root, scope, store);
   const items = new Map();
   let popup = null,
+    popupAnchor = null,
     destroyed = false,
     serial = 0;
   const ensure = () => {
@@ -107,7 +108,10 @@ export function createInspector({
         } finally {
           element.remove();
           if (anchor) anchor.setAttribute("aria-expanded", "false");
-          if (popup === handle) popup = null;
+          if (popup === handle) {
+            popup = null;
+            popupAnchor = null;
+          }
           if (restoreFocus && previous?.isConnected) previous.focus();
           onClose?.();
         }
@@ -122,6 +126,7 @@ export function createInspector({
     });
     closeButton.addEventListener("click", () => handle.close());
     popup = handle;
+    popupAnchor = anchor;
     root.getElementById("network-popups").append(element);
     if (anchor) {
       anchor.setAttribute("aria-haspopup", "dialog");
@@ -166,8 +171,7 @@ export function createInspector({
       remove() {
         if (removed) return;
         removed = true;
-        if (popup?.element && node.getAttribute("aria-expanded") === "true")
-          popup.close(false);
+        if (popupAnchor && node.contains(popupAnchor)) popup.close(false);
         node.removeEventListener("click", click);
         node.remove();
         items.delete(id);

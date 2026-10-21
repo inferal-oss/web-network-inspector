@@ -224,3 +224,45 @@ test("content cleanup can close its popup without starting the replacement rende
     assert.equal(disposed, 1);
     assert.equal(renders, 0);
   }));
+
+test("removing an unrelated expanded control leaves the active popup open", () =>
+  fixture(({ inspector, document }) => {
+    const disclosure = document.createElement("button");
+    disclosure.setAttribute("aria-expanded", "true");
+    const unrelated = inspector.addBarItem({
+      id: "disclosure",
+      element: disclosure,
+    });
+    const owner = inspector.addBarItem({ id: "owner", label: "Details" });
+    let disposed = 0;
+    const popup = inspector.openPopup({
+      anchor: owner.element,
+      content: () => () => disposed++,
+    });
+    unrelated.remove();
+    assert.equal(popup.element.isConnected, true);
+    assert.equal(disposed, 0);
+    owner.element.setAttribute("aria-expanded", "false");
+    owner.remove();
+    assert.equal(popup.element.isConnected, false);
+    assert.equal(disposed, 1);
+  }));
+
+test("removing a custom bar container closes a popup anchored to its child", () =>
+  fixture(({ inspector, document }) => {
+    const group = document.createElement("div"),
+      anchor = document.createElement("button");
+    group.append(anchor);
+    const item = inspector.addBarItem({ id: "group", element: group });
+    let closed = 0;
+    const popup = inspector.openPopup({
+      anchor,
+      content: "Nested details",
+      onClose: () => closed++,
+    });
+    item.remove();
+    item.remove();
+    assert.equal(popup.element.isConnected, false);
+    assert.equal(anchor.getAttribute("aria-expanded"), "false");
+    assert.equal(closed, 1);
+  }));

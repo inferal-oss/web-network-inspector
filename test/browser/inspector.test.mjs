@@ -419,3 +419,46 @@ test("capture identifies requests from the inspected window and other windows wi
       assert.match(result.entries[i].note, /not read/);
     }
   }));
+
+test("popup cleanup and ownership survive synchronous rendering and independent custom controls", () =>
+  fixture(async (page) => {
+    const result = await page.evaluate(() => {
+      const inspector = window.inspector;
+      let disposed = 0;
+      const closed = inspector.openPopup({
+        content: ({ close }) => {
+          close();
+          return () => disposed++;
+        },
+      });
+      const group = document.createElement("div"),
+        anchor = document.createElement("button");
+      anchor.textContent = "Nested popup control";
+      group.append(anchor);
+      const owner = inspector.addBarItem({ id: "nested", element: group });
+      const disclosure = document.createElement("button");
+      disclosure.setAttribute("aria-expanded", "true");
+      const other = inspector.addBarItem({
+        id: "disclosure",
+        element: disclosure,
+      });
+      const popup = inspector.openPopup({ anchor, content: "Owned popup" });
+      other.remove();
+      const stillOpen = popup.element.isConnected;
+      owner.remove();
+      return {
+        disposed,
+        closed: closed.element.isConnected,
+        stillOpen,
+        removed: popup.element.isConnected,
+        anchorExpanded: anchor.getAttribute("aria-expanded"),
+      };
+    });
+    assert.deepEqual(result, {
+      disposed: 1,
+      closed: false,
+      stillOpen: true,
+      removed: false,
+      anchorExpanded: "false",
+    });
+  }));
