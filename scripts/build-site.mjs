@@ -37,6 +37,16 @@ export async function buildSite({
   hash.update(await readFile(resolve(root, "examples/display/display.css")));
   const revision = hash.digest("hex").slice(0, 12);
   const runtime = "runtime-" + revision;
+  const versionAssets = (html) =>
+    html
+      .replaceAll(
+        `${basePath}assets/site.css"`,
+        `${basePath}assets/site.css?v=${revision}"`,
+      )
+      .replaceAll(
+        `${basePath}assets/site.js"`,
+        `${basePath}assets/site.js?v=${revision}"`,
+      );
   const displayHead = `<link rel="stylesheet" href="${basePath}assets/display/widget.css"><link rel="stylesheet" href="${basePath}assets/display/display.css?v=${revision}"><script src="${basePath}assets/display/openregard-0.3.0.js"></script><script src="${basePath}assets/display/display.js?v=${revision}"></script>`;
   const header = (active) =>
     `<a class="skip-link" href="#main">Skip to content</a><header class="site-header"><div class="header-inner wrap"><a class="brand" href="${basePath}"><img src="${basePath}assets/wni-mark.svg" width="32" height="32" alt=""><span>Web Network Inspector</span></a><nav class="header-nav" aria-label="Main navigation"><a href="${basePath}"${active === "overview" ? ' aria-current="page"' : ""}>Overview</a><a href="${basePath}demo/">Live demo</a><a href="${basePath}docs/"${active === "docs" ? ' aria-current="page"' : ""}>Documentation</a><a class="source-link" href="https://github.com/inferal-oss/web-network-inspector">GitHub ↗</a><div data-inferal-display></div></nav></div></header>`;
@@ -92,14 +102,17 @@ export async function buildSite({
       "</main>",
       `<footer class="demo-site-footer"><div class="footer-bottom">${sponsor}<a href="${basePath}">Back to the project →</a></div></footer></main>`,
     );
-  await writeFile(resolve(output, "demo/index.html"), demo);
+  await writeFile(resolve(output, "demo/index.html"), versionAssets(demo));
   const landing = (await readFile(resolve(root, "site/index.html"), "utf8"))
     .replaceAll("{{BASE}}", basePath)
     .replaceAll("{{VERSION}}", escape(pkg.version))
     .replace("{{HEADER}}", header("overview"))
     .replace("{{FOOTER}}", footer)
     .replace("</head>", displayHead + "</head>");
-  await writeFile(resolve(output, "index.html"), highlightHTML(landing));
+  await writeFile(
+    resolve(output, "index.html"),
+    versionAssets(highlightHTML(landing)),
+  );
   await writeFile(resolve(output, ".nojekyll"), "");
   const pages = [
     ["Getting started", "docs/", "docs/getting-started.md"],
@@ -155,7 +168,7 @@ export async function buildSite({
       .join("");
     const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} · Web Network Inspector</title><meta name="description" content="${escape(title)} for Web Network Inspector: a small, extensible in-page network waterfall."><link rel="icon" href="${basePath}assets/wni-mark.svg" type="image/svg+xml">${displayHead}<link rel="stylesheet" href="${basePath}assets/site.css"><script type="module" src="${basePath}assets/site.js"></script></head><body>${header("docs")}<main id="main" class="wrap docs-shell"><aside class="docs-sidebar"><span class="tiny-caps">DOCUMENTATION</span><nav aria-label="Documentation">${links}<a href="${basePath}demo/">Live demo ↗</a></nav></aside><article class="doc-content"><div class="doc-breadcrumb">WEB NETWORK INSPECTOR / DOCS</div>${highlightHTML(document.querySelector("article").innerHTML)}</article><aside class="doc-toc"><span class="tiny-caps">ON THIS PAGE</span><nav aria-label="On this page">${toc.join("")}</nav></aside></main>${footer}</body></html>`;
     await mkdir(resolve(output, path), { recursive: true });
-    await writeFile(resolve(output, path, "index.html"), page);
+    await writeFile(resolve(output, path, "index.html"), versionAssets(page));
   }
   console.log(
     "Built project site, live demo, API reference, and styling guide.",
