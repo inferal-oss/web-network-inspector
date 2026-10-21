@@ -144,3 +144,83 @@ test("store subscriptions report changes and can unsubscribe without changing re
     });
     assert.doesNotThrow(() => store.recordEvent({ type: "still-recorded" }));
   }));
+
+test("popup renderers that close synchronously dispose returned resources exactly once", () =>
+  fixture(({ inspector }) => {
+    let disposed = 0,
+      closed = 0;
+    const item = inspector.addBarItem({ id: "details", label: "Details" });
+    const popup = inspector.openPopup({
+      anchor: item.element,
+      onClose: () => closed++,
+      content: ({ close }) => {
+        close();
+        return () => disposed++;
+      },
+    });
+    assert.equal(popup.element.isConnected, false);
+    assert.equal(item.element.getAttribute("aria-expanded"), "false");
+    assert.equal(disposed, 1);
+    assert.equal(closed, 1);
+    popup.close();
+    inspector.destroy();
+    assert.equal(disposed, 1);
+    assert.equal(closed, 1);
+  }));
+
+test("popup updates dispose renderers that close, replace, or destroy their popup while rendering", () =>
+  fixture(({ inspector }) => {
+    let disposed = 0;
+    const popup = inspector.openPopup({ content: () => () => disposed++ });
+    popup.update({
+      content: ({ close }) => {
+        close();
+        return () => disposed++;
+      },
+    });
+    assert.equal(disposed, 2);
+    let replacement;
+    const replaced = inspector.openPopup({
+      content: () => {
+        replacement = inspector.openPopup({
+          title: "Replacement",
+          content: "Still open",
+        });
+        return () => disposed++;
+      },
+    });
+    assert.equal(replaced.element.isConnected, false);
+    assert.equal(disposed, 3);
+    assert.equal(replacement.element.isConnected, true);
+    assert.match(replacement.element.textContent, /Still open/);
+    const destroyed = inspector.openPopup({
+      content: () => {
+        inspector.destroy();
+        return () => disposed++;
+      },
+    });
+    assert.equal(destroyed.element.isConnected, false);
+    assert.equal(disposed, 4);
+  }));
+
+test("content cleanup can close its popup without starting the replacement renderer", () =>
+  fixture(({ inspector }) => {
+    let popup,
+      disposed = 0,
+      renders = 0;
+    popup = inspector.openPopup({
+      content: () => () => {
+        disposed++;
+        popup.close();
+      },
+    });
+    popup.update({
+      content: () => {
+        renders++;
+        return () => disposed++;
+      },
+    });
+    assert.equal(popup.element.isConnected, false);
+    assert.equal(disposed, 1);
+    assert.equal(renders, 0);
+  }));

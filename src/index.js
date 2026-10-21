@@ -81,18 +81,29 @@ export function createInspector({
           const previousCleanup = cleanup;
           cleanup = null;
           if (typeof previousCleanup === "function") previousCleanup();
+          if (closed) return;
           body.replaceChildren();
-          if (typeof content === "function")
-            cleanup = content({ container: body, close: () => handle.close() });
-          else if (content?.nodeType) body.append(content);
+          if (typeof content === "function") {
+            const nextCleanup = content({
+              container: body,
+              close: () => handle.close(),
+            });
+            // The renderer may close, replace, or destroy this popup before
+            // returning resources for us to dispose.
+            if (closed) {
+              if (typeof nextCleanup === "function") nextCleanup();
+            } else cleanup = nextCleanup;
+          } else if (content?.nodeType) body.append(content);
           else body.textContent = String(content);
         }
       },
       close(restoreFocus = true) {
         if (closed) return;
         closed = true;
+        const dispose = cleanup;
+        cleanup = null;
         try {
-          if (typeof cleanup === "function") cleanup();
+          if (typeof dispose === "function") dispose();
         } finally {
           element.remove();
           if (anchor) anchor.setAttribute("aria-expanded", "false");
@@ -118,7 +129,7 @@ export function createInspector({
     }
     try {
       handle.update({ content });
-      closeButton.focus();
+      if (!closed) closeButton.focus();
     } catch (error) {
       handle.close();
       throw error;
