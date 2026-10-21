@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web Network Inspector</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">A small, extensible browser tool</p>
+      <h1>Web Network Inspector</h1>
+      <p>
+        See requests, messages, and application events together. Select a row to
+        hold its place while new traffic arrives.
+      </p>
+      <div class="actions">
+        <button id="request">Fetch example JSON</button>
+        <button id="event">Record an application event</button>
+      </div>
+      <p id="result" role="status">The inspector is ready below.</p>
+      <p>
+        The “Connection” item demonstrates a custom bar control and popup. This
+        example uses synthetic data and a local response.
+      </p>
+    </main>
+    <script type="module" src="./demo.js"></script>
+  </body>
+</html>

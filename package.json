@@ -1,0 +1,33 @@
+{
+  "name": "web-network-inspector",
+  "version": "0.1.0",
+  "description": "An extensible in-page network waterfall with bounded local capture.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./capture": "./src/network-capture.js",
+    "./style.css": "./src/style.css"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "NOTICE.md",
+    "docs/api.md"
+  ],
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "check": "prettier --check . && node --check src/index.js && node --check src/network-capture.js && node --check src/network-activity.js && node --check src/network-json.js",
+    "test": "node --test test/*.test.js",
+    "test:browser": "node --test test/browser/*.test.mjs"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.12",
+    "playwright": "1.62.1",
+    "prettier": "3.6.2"
+  }
+}
