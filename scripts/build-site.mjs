@@ -70,6 +70,8 @@ export async function buildSite({
     ["Styling guide", "docs/styling/", "docs/styling.md"],
     ["React component", "docs/react/", "docs/react.md"],
     ["Capture filters", "docs/filtering/", "docs/filtering.md"],
+    ["Request details", "docs/details/", "docs/details.md"],
+    ["Local history", "docs/storage/", "docs/storage.md"],
   ];
   for (const [title, path, source] of pages) {
     const html = await marked.parse(

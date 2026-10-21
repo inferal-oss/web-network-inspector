@@ -178,7 +178,9 @@ async function fixture(run) {
     );
   const store = new NetworkCapture(),
     root = { ownerDocument: globalThis.document, getElementById: get };
-  const capture = setupNetworkActivity(root, scope, store),
+  const capture = setupNetworkActivity(root, scope, store, {
+      detailFrame: false,
+    }),
     tick = () => {
       for (const fn of timers.values()) fn();
     };
@@ -427,10 +429,10 @@ test("pointer cancellation releases live rendering without changing selection", 
   }));
 test("toolbar applies retention limits together, trims history, and Clear keeps the limits", () =>
   fixture(({ store, get, tick }) => {
-    assert.equal(get("network-limit-entries").value, "2000");
-    assert.equal(get("network-limit-preview").value, "16");
-    assert.equal(get("network-limit-messages").value, "1000");
-    assert.equal(get("network-limit-bytes").value, "8");
+    assert.equal(get("network-limit-entries").value, "5000");
+    assert.equal(get("network-limit-preview").value, "256");
+    assert.equal(get("network-limit-messages").value, "2000");
+    assert.equal(get("network-limit-bytes").value, "32");
     for (let i = 0; i < 6; i++) message(store, "x".repeat(4096));
     tick();
     get("network-limit-entries").value = "3";
@@ -455,6 +457,7 @@ test("toolbar applies retention limits together, trims history, and Clear keeps 
   }));
 test("expired rows stay in place while browsing, with current retained history available on explicit navigation", () =>
   fixture(({ store, get, tick }) => {
+    store.setLimits({ messages: 1000 });
     const selected = message(store, "old selected message");
     tick();
     get("network-rows").firstChild.emit("click");

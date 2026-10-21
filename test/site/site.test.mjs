@@ -71,6 +71,8 @@ test("all site pages and local assets resolve beneath the project prefix", async
     "docs/styling/",
     "docs/react/",
     "docs/filtering/",
+    "docs/details/",
+    "docs/storage/",
     "demo/",
   ]) {
     const file = resolve(output, path, "index.html");
@@ -247,7 +249,10 @@ test("demo sends and receives WebSocket frames and disconnects cleanly", () =>
       .getByRole("button", { name: /Echoed WebSocket message/ })
       .click();
     assert.match(
-      await page.locator("#network-detail").textContent(),
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
       /Echo from the demo/,
     );
     assert.equal(
@@ -263,6 +268,15 @@ test("demo sends and receives WebSocket frames and disconnects cleanly", () =>
       document
         .getElementById("socket-result")
         .textContent.startsWith("Disconnected"),
+    );
+    await page.getByRole("button", { name: /Jump to latest/ }).click();
+    await page.getByRole("button", { name: /WebSocket disconnected/ }).click();
+    assert.match(
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
+      /Close code/,
     );
     assert.equal(
       await page

@@ -58,7 +58,10 @@ try {
     .getByRole("button", { name: "Record a check", exact: true })
     .click();
   await page.getByRole("button", { name: /Published a preview/ }).click();
-  await page.locator("#network-detail .network-json-tree").waitFor();
+  await page
+    .frameLocator(".network-detail-frame")
+    .locator(".network-json-tree")
+    .waitFor();
   await page
     .getByRole("button", { name: "Connect WebSocket", exact: true })
     .click();
@@ -71,6 +74,9 @@ try {
   await page.getByRole("button", { name: /Jump to latest/ }).click();
   await page.getByRole("button", { name: /Echoed WebSocket message/ }).click();
   await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  await page.getByRole("button", { name: /Jump to latest/ }).click();
+  await page.getByRole("button", { name: /WebSocket disconnected/ }).waitFor();
+  await page.getByRole("button", { name: /Echoed WebSocket message/ }).click();
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: resolve(output, "demo.png") });
   await page.getByRole("button", { name: "Connection · ready" }).click();

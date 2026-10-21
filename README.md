@@ -69,8 +69,10 @@ renderers and cleanup, headless capture, shared views, and message annotation.
 ## Scope and data handling
 
 Install before creating requests or sockets that you want to inspect. Capture
-is opt-in per browser scope, limited to this page, and held in memory. The
-inspector does not send telemetry, persist history, or contact a service.
+is opt-in per browser scope and held in memory by default. Optional
+[IndexedDB history](docs/storage.md) retains bounded objects across reloads.
+The inspector does not send telemetry. [Resource previews](docs/details.md)
+make a separate GET only when requested.
 Recorded headers, URLs, and bodies can contain sensitive application data;
 only enable capture where that is appropriate. There is no automatic redaction.
 
@@ -137,3 +139,5 @@ Pass a synchronous `filter` to `createInspector`, or configure it on a shared
 
 The demo also connects to Postman’s public WebSocket echo service after you
 click Connect, then captures sent and echoed messages as separate frames.
+
+[Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)

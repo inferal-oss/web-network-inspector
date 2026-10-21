@@ -100,6 +100,14 @@ inspector.root.append(overrides);
 
 For a dark theme, set suitable host variables and also override `:host { color-scheme: dark; }` in this stylesheet. Check fixed token colors and selected/disabled states for contrast. Preserve the focus outlines and the `[hidden]` behavior.
 
+The details iframe loads the inspector's `stylesheet` URL too, and copies the
+host's CSS variables when its document becomes ready. Put persistent details
+overrides in that stylesheet, using `.network-detail-content` for the frame's
+body. A style element added only to the shadow root does not cross the iframe
+boundary. Custom [details renderers](details.md) can add styles to their supplied
+document. Theme-variable changes after the frame loads require remounting the
+inspector or applying the same variables in the renderer's document.
+
 ## Replace the base stylesheet
 
 ```js

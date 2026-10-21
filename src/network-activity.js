@@ -1,5 +1,5 @@
-import { previewText } from "./network-capture.js";
-import { jsonBodyPreview } from "./network-json.js";
+import { previewParts } from "./network-capture.js";
+import { createDetailView } from "./detail-renderer.js";
 
 const bytes = (value) =>
   value == null
@@ -7,13 +7,14 @@ const bytes = (value) =>
     : value < 1024
       ? `${value} B`
       : `${(value / 1024).toFixed(1)} KiB`;
-const ms = (value) => `${Math.max(0, value).toFixed(1)} ms`;
+const ms = (value) => `${value.toFixed(1)} ms`;
 function text(node, value) {
   if (node.textContent !== value) node.textContent = value;
 }
 function name(entry) {
   if (entry.kind === "event") return entry.label;
-  if (entry.kind === "message" && entry.label) return entry.label;
+  if (["message", "socket"].includes(entry.kind) && entry.label)
+    return entry.label;
   if (entry.kind === "message")
     return `${entry.direction === "out" ? "↑" : "↓"} ${entry.protocol || "Message"}`;
   try {
@@ -60,7 +61,7 @@ export function timelinePosition(entry, start, end, now) {
 }
 
 /** Mount the retained waterfall inside an inspector's own root. */
-export function setupNetworkActivity(root, scope, store) {
+export function setupNetworkActivity(root, scope, store, options = {}) {
   const document = root.ownerDocument;
   const element = (tag, className, value) => {
     const node = document.createElement(tag);
@@ -70,6 +71,22 @@ export function setupNetworkActivity(root, scope, store) {
   };
   const get = (id) => root.getElementById(id);
   const cleanup = [];
+  const detailView = createDetailView(root.getElementById("network-detail"), {
+    ...options,
+    scope,
+    store,
+    root,
+    name,
+    select: (id) => select(id),
+    showMessages: (id) => {
+      connection.value = String(id);
+      filter.value = "message";
+      resetView();
+      dirty = true;
+      render();
+    },
+  });
+  cleanup.push(() => detailView.destroy());
   const listen = (target, type, fn, options) => {
     target.addEventListener(type, fn, options);
     if (target === scope)
@@ -262,6 +279,7 @@ export function setupNetworkActivity(root, scope, store) {
   });
   listen(get("network-clear"), "click", () => {
     store.clear();
+    void store.persistence?.flush().catch(() => {});
     selected = null;
     resetView();
     follow.checked = true;
@@ -369,174 +387,20 @@ export function setupNetworkActivity(root, scope, store) {
       entry
         ? {
             ...entry,
-            requestBody: entry.requestBody && {
-              ...entry.requestBody,
-              bytes: entry.requestBody.bytes.length,
-            },
-            responseBody: entry.responseBody && {
-              ...entry.responseBody,
-              bytes: entry.responseBody.bytes.length,
-            },
-            body: entry.body && {
-              ...entry.body,
-              bytes: entry.body.bytes.length,
-            },
+            ...Object.fromEntries(
+              previewParts.map((key) => [
+                key,
+                entry[key] && { ...entry[key], bytes: entry[key].bytes.length },
+              ]),
+            ),
           }
         : selected,
     );
     if (detailRevision === revision) return;
     detailRevision = revision;
-    detail.replaceChildren();
-    if (selected !== null) {
-      const deselect = element(
-        "button",
-        "text-button network-deselect",
-        "Deselect",
-      );
-      deselect.type = "button";
-      deselect.title = "Deselect this entry and resume following if enabled";
-      listen(deselect, "click", () => select(selected));
-      detail.append(deselect);
-    }
-    if (!entry) {
-      detail.append(
-        element(
-          "p",
-          "network-empty",
-          selected
-            ? `Entry #${selected} expired from retained history. Select another row to inspect retained activity.`
-            : "Select a request, message or event to inspect it.",
-        ),
-      );
-      return;
-    }
-    detail.append(
-      element("h3", "", name(entry)),
-      element(
-        "p",
-        "network-detail-url",
-        entry.url || entry.control || "Application event",
-      ),
-    );
-    const fields = [
-      ["Type", entry.kind],
-      ["Status", entry.status],
-      ["Started", ms(entry.start)],
-      [
-        "Duration",
-        entry.end == null
-          ? entry.kind === "http" || entry.kind === "socket"
-            ? "In progress"
-            : "—"
-          : ms(entry.end - entry.start),
-      ],
-      [
-        "Response headers at",
-        entry.headersAt == null ? null : ms(entry.headersAt - entry.start),
-      ],
-      [
-        "Transfer",
-        entry.transferSize == null ? null : bytes(entry.transferSize),
-      ],
-      ["Correlation", entry.correlationId],
-      ["Event type", entry.eventType],
-      ["Connection", entry.connection && `#${entry.connection}`],
-      ["Close code", entry.closeCode],
-      ["Close reason", entry.closeReason],
-      ["Error", entry.error || entry.previewError],
-    ];
-    const dl = element("dl", "network-fields");
-    for (const [key, value] of fields)
-      if (value != null) {
-        dl.append(element("dt", "", key), element("dd", "", String(value)));
-      }
-    detail.append(dl);
-    function related(label, id) {
-      if (!id) return;
-      const item = store.byId.get(id),
-        p = element("p", "network-related", `${label}: `);
-      if (item) {
-        const button = element("button", "text-button", `#${id} ${name(item)}`);
-        button.type = "button";
-        listen(button, "click", () => select(id));
-        p.append(button);
-      } else p.append(document.createTextNode(`#${id} (expired)`));
-      detail.append(p);
-    }
-    related(
-      entry.kind === "http" ? "Initiating event" : "Linked event",
-      entry.eventId,
-    );
-    if (entry.nearEvent !== entry.eventId)
-      related("Previous event in time", entry.nearEvent);
-    if (entry.kind === "socket") {
-      const button = element(
-        "button",
-        "button",
-        "Show this connection’s messages",
-      );
-      button.type = "button";
-      listen(button, "click", () => {
-        connection.value = String(entry.id);
-        filter.value = "message";
-        resetView();
-        dirty = true;
-        render();
-      });
-      detail.append(button);
-    }
-    if (entry.note) detail.append(element("p", "network-note", entry.note));
-    for (const [key, label] of [
-      ["requestHeaders", "Request headers"],
-      ["responseHeaders", "Response headers"],
-    ])
-      if (entry[key]) {
-        const section = element("details");
-        section.append(
-          element("summary", "", label),
-          element("pre", "", entry[key]),
-        );
-        detail.append(section);
-      }
-    for (const [key, label] of [
-      ["requestBody", "Request body"],
-      ["responseBody", "Response body"],
-      ["body", entry.kind === "event" ? "Event data" : "Message"],
-    ])
-      if (entry[key]) {
-        const preview = entry[key],
-          section = element("section", "network-preview");
-        const json = jsonBodyPreview(preview, document);
-        section.append(
-          element(
-            "h4",
-            "",
-            `${label} · ${json ? "JSON" : preview.text ? "Text" : "Hex"} · ${bytes(preview.size)}`,
-          ),
-        );
-        if (preview.truncated)
-          section.append(
-            element(
-              "p",
-              "network-note",
-              `Beginning only · retained ${bytes(preview.bytes.length)}${preview.size != null ? ` of ${bytes(preview.size)}` : ""}.`,
-            ),
-          );
-        if (json) {
-          const raw = element("details", "network-json-raw");
-          raw.append(
-            element(
-              "summary",
-              "",
-              preview.truncated ? "Raw preview" : "Raw JSON",
-            ),
-            element("pre", "", previewText(preview)),
-          );
-          section.append(json, raw);
-        } else section.append(element("pre", "", previewText(preview)));
-        detail.append(section);
-      }
+    detailView.render(entry, selected);
   }
+
   function render() {
     text(count, `${store.entries.length}${store.paused ? " · paused" : ""}`);
     if (!open) return;
@@ -650,7 +514,12 @@ export function setupNetworkActivity(root, scope, store) {
       frozen || browsing()
         ? `browsing ${view.ids.length} fixed rows · ${view.ids.filter((id) => !store.byId.has(id)).length} rows no longer retained`
         : `showing ${view.ids.length ? first + 1 : 0}–${stop}`;
-    summary.textContent = `${filtered.length} matching · ${bytes(store.bytes)} previews · ${store.expired} entries expired · ${store.expiredPreviews} previews expired · ${browsingStatus}`;
+    const storageStatus = store.persistence
+      ? store.persistence.status === "Ready"
+        ? " · local history enabled"
+        : " · local history unavailable"
+      : "";
+    summary.textContent = `${filtered.length} matching · ${bytes(store.bytes)} previews · ${store.expired} entries expired · ${store.expiredPreviews} previews expired · ${browsingStatus}${storageStatus}`;
     latest.hidden = !(frozen || browsing());
     text(latest, `${newCount} new · Jump to latest`);
     older.disabled =
@@ -709,9 +578,10 @@ export function setupNetworkActivity(root, scope, store) {
       const bar = row.lastChild.firstChild,
         pos = timelinePosition(entry, start, end, now);
       bar.style.left = `${pos.left}%`;
-      bar.style.width = ["event", "message"].includes(entry.kind)
-        ? "3px"
-        : `max(3px, ${pos.width}%)`;
+      bar.style.width =
+        entry.socketEvent || ["event", "message"].includes(entry.kind)
+          ? "3px"
+          : `max(3px, ${pos.width}%)`;
       row.lastChild.title = `${ms(entry.start - start)} after timeline start${entry.end != null ? ` · ${ms(entry.end - entry.start)}` : ""}`;
     }
     for (const [id, row] of rows) {

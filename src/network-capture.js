@@ -1,9 +1,9 @@
-// This recorder belongs to one page load. It never writes to storage or a server.
+// Capture stays bounded; optional persistence is provided by storage.js.
 export const captureLimits = Object.freeze({
-  preview: 16 * 1024,
-  bytes: 8 * 1024 * 1024,
-  entries: 2000,
-  messages: 1000,
+  preview: 256 * 1024,
+  bytes: 32 * 1024 * 1024,
+  entries: 5000,
+  messages: 2000,
   readers: 8,
 });
 export const retentionBounds = Object.freeze({
@@ -12,6 +12,12 @@ export const retentionBounds = Object.freeze({
   entries: 100000,
   messages: 100000,
 });
+export const previewParts = [
+  "requestBody",
+  "responseBody",
+  "body",
+  "resourceBody",
+];
 const encoder = new TextEncoder();
 const installations = new WeakMap();
 const short = (value, max = 2048) => String(value ?? "").slice(0, max);
@@ -35,13 +41,21 @@ function utf8Size(text) {
   return size;
 }
 export function bodyPreview(value, limit = captureLimits.preview, type = "") {
+  const contentType = short(type, 128);
   if (value == null)
-    return { bytes: new Uint8Array(), size: 0, text: true, truncated: false };
+    return {
+      bytes: new Uint8Array(),
+      size: 0,
+      text: true,
+      truncated: false,
+      contentType,
+    };
   if (typeof value === "string") {
     const bytes = new Uint8Array(Math.min(limit, value.length * 3));
     const { written } = encoder.encodeInto(value, bytes);
     const size = utf8Size(value);
     return {
+      contentType,
       bytes: bytes.slice(0, written),
       size,
       text: true,
@@ -56,12 +70,14 @@ export function bodyPreview(value, limit = captureLimits.preview, type = "") {
         : null;
   if (bytes)
     return {
+      contentType,
       bytes: bytes.slice(0, limit),
       size: bytes.byteLength,
       text: /^(text\/)|json|xml|javascript|svg|form-urlencoded/i.test(type),
       truncated: bytes.byteLength > limit,
     };
   return {
+    contentType,
     bytes: new Uint8Array(),
     size: null,
     text: true,
@@ -97,6 +113,7 @@ export class NetworkCapture {
       throw new TypeError("filter must be a function.");
     Object.defineProperty(this, "filter", { value: filter, enumerable: true });
     this.now = now;
+    this.timeOrigin = Date.now() - now();
     this.limits = { ...captureLimits };
     this.entries = [];
     this.byId = new Map();
@@ -169,7 +186,7 @@ export class NetworkCapture {
     while (this.entries.length > this.limits.entries)
       this.remove(this.entries[0]);
     for (const entry of this.entries)
-      for (const key of ["requestBody", "responseBody", "body"])
+      for (const key of previewParts)
         if (entry[key]) {
           const previous = entry[key],
             trimmed = this.trimPreview(previous);
@@ -233,6 +250,7 @@ export class NetworkCapture {
       eventId: null,
       ...data,
     };
+    entry.capturedAt ??= this.timeOrigin + entry.start;
     this.entries.push(entry);
     this.byId.set(entry.id, entry);
     if (entry.kind === "event") {
@@ -269,7 +287,7 @@ export class NetworkCapture {
     this.entries.splice(this.entries.indexOf(entry), 1);
     this.byId.delete(entry.id);
     this.expired++;
-    for (const part of ["requestBody", "responseBody", "body"])
+    for (const part of previewParts)
       if (entry[part]) {
         this.bytes -= entry[part].bytes.byteLength;
         entry[part] = {
@@ -280,11 +298,7 @@ export class NetworkCapture {
       }
     // Pending transport callbacks may still hold this object after its eviction.
     for (const key of Object.keys(entry))
-      if (
-        !["id", "generation", "requestBody", "responseBody", "body"].includes(
-          key,
-        )
-      )
+      if (!["id", "generation", ...previewParts].includes(key))
         delete entry[key];
   }
   update(entry, data) {
@@ -305,7 +319,7 @@ export class NetworkCapture {
   expirePreviews() {
     for (const item of this.entries) {
       if (this.bytes <= this.limits.bytes) break;
-      for (const key of ["requestBody", "responseBody", "body"]) {
+      for (const key of previewParts) {
         const previous = item[key];
         if (!previous?.bytes?.byteLength) continue;
         this.bytes -= previous.bytes.byteLength;
@@ -424,17 +438,22 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
         bodyPreview(value, store.limits.preview, type),
       );
   }
-  function responsePreview(entry, response) {
+  function responsePreview(
+    entry,
+    response,
+    part = "responseBody",
+    clone = true,
+  ) {
     if (!store.has(entry) || store.paused || !response.body) return;
     if (readers >= store.limits.readers) {
-      store.preview(entry, "responseBody", {
+      store.preview(entry, part, {
         ...bodyPreview(null),
         size: null,
         note: "Preview skipped: capture readers busy.",
       });
       return;
     }
-    const reader = response.clone().body.getReader(),
+    const reader = (clone ? response.clone() : response).body.getReader(),
       parts = [];
     let length = 0,
       finished = false,
@@ -453,7 +472,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
       cancel();
     }, 10000);
     activeReaders.add(stop);
-    void (async () => {
+    return (async () => {
       try {
         while (
           connected &&
@@ -494,7 +513,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
           response.headers.get("content-type") || "",
         );
         if (connected)
-          store.preview(entry, "responseBody", {
+          store.preview(entry, part, {
             ...preview,
             size,
             truncated:
@@ -614,14 +633,45 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
           ),
         );
         on("close", (event) => {
-          safe(() =>
+          safe(() => {
+            const end = store.now();
+            if (
+              (!state.connection ||
+                state.connection.generation !== store.generation) &&
+              !store.paused
+            )
+              state.connection = store.add({
+                kind: "socket",
+                url: short(socket.url),
+                status: "Open",
+                start: end,
+                note: "Connection already existed when this capture began.",
+              });
             store.update(state.connection, {
               status: "Closed",
-              end: store.now(),
+              end,
               closeCode: event.code,
               closeReason: short(event.reason),
-            }),
-          );
+              wasClean: event.wasClean,
+            });
+            if (
+              state.connection &&
+              state.connection.generation === store.generation
+            )
+              store.add({
+                kind: "socket",
+                socketEvent: "close",
+                label: "WebSocket disconnected",
+                connection: state.connection.id,
+                url: short(socket.url),
+                start: end,
+                end,
+                status: "Closed",
+                closeCode: event.code,
+                closeReason: short(event.reason),
+                wasClean: event.wasClean,
+              });
+          });
           for (const cleanup of socketCleanups) cleanup();
         });
         const message = (direction, data) =>
@@ -779,9 +829,12 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
               start: resource.startTime,
               end: resource.responseEnd,
               transferSize: resource.transferSize,
+              encodedBodySize: resource.encodedBodySize,
+              decodedBodySize: resource.decodedBodySize,
+              nextHopProtocol: short(resource.nextHopProtocol, 32),
               status: "Loaded",
               nearEvent,
-              note: "Browser resource timing only; body and headers are unavailable.",
+              note: "The browser exposes timing for this original resource load. Load a separate preview to inspect response headers and content.",
             });
           });
       });
@@ -814,6 +867,76 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
   const capture = {
     store,
     annotateMessage,
+    async loadResource(entry) {
+      if (!connected || !store.has(entry) || entry.kind !== "resource")
+        throw new Error(
+          "Choose a retained browser resource to load its preview.",
+        );
+      if (store.paused)
+        throw new Error("Resume recording to load a resource preview.");
+      if (entry.resourcePreviewStatus === "Loading") return;
+      const url = new URL(entry.url);
+      if (
+        !["http:", "https:"].includes(url.protocol) ||
+        url.username ||
+        url.password
+      )
+        throw new Error(
+          "Resource previews require an HTTP or HTTPS URL without credentials.",
+        );
+      if (!originalFetch) throw new Error("Fetch is unavailable.");
+      const controller = new AbortController();
+      const stop = () => controller.abort();
+      cleanups.add(stop);
+      const timeout = setTimeout(stop, 10000);
+      store.update(entry, {
+        resourcePreviewStatus: "Loading",
+        previewError: null,
+      });
+      try {
+        const response = await originalFetch.call(scope, url.href, {
+          method: "GET",
+          cache: "force-cache",
+          credentials: "same-origin",
+          mode: "cors",
+          signal: controller.signal,
+        });
+        if (!connected || !store.has(entry)) return;
+        if (response.type === "opaque")
+          throw new Error(
+            "The resource does not expose a readable CORS response.",
+          );
+        store.update(entry, {
+          resourceStatus: response.status,
+          resourceRequestHeaders:
+            "No application-supplied headers. Browser-managed headers are not exposed.",
+          resourceResponseHeaders: headersPreview(response.headers),
+          resourceFetchedAt: Date.now(),
+        });
+        if (response.body)
+          await responsePreview(entry, response, "resourceBody", false);
+        else
+          store.preview(
+            entry,
+            "resourceBody",
+            bodyPreview(
+              null,
+              store.limits.preview,
+              response.headers.get("content-type") || "",
+            ),
+          );
+        store.update(entry, { resourcePreviewStatus: "Loaded" });
+      } catch (error) {
+        store.update(entry, {
+          resourcePreviewStatus: "Failed",
+          previewError: `Resource preview: ${short(error.message)}`,
+        });
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        cleanups.delete(stop);
+      }
+    },
     disconnect() {
       if (!connected) return;
       connected = false;

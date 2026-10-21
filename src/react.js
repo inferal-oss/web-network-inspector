@@ -18,6 +18,7 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
     stylesheet,
     nonce,
     onReady,
+    renderDetails,
     ...containerProps
   },
   forwardedRef,
@@ -36,6 +37,7 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
       open: latest.current.open ?? false,
       stylesheet,
       nonce,
+      renderDetails,
     });
     instance.current = inspector;
     let cleanup;
@@ -63,7 +65,16 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
         }
       }
     };
-  }, [scope, store, filter, capture, stylesheet, nonce, forwardedRef]);
+  }, [
+    scope,
+    store,
+    filter,
+    capture,
+    stylesheet,
+    nonce,
+    renderDetails,
+    forwardedRef,
+  ]);
   useEffect(() => {
     if (open !== undefined) instance.current?.setOpen(open);
   }, [open]);

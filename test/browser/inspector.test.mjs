@@ -52,12 +52,16 @@ test("real browser captures fetch and generic events; selected rows hold through
     assert.equal(await host.isVisible(), true);
     await page.getByRole("button", { name: /POST \/anything/ }).click();
     await page
-      .locator("#network-detail")
+      .frameLocator(".network-detail-frame")
+      .locator("body")
       .locator(".network-json-tree")
       .first()
       .waitFor();
     assert.match(
-      await page.locator("#network-detail").textContent(),
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
       /Hello from a synthetic response/,
     );
     const before = await page.locator(".network-row").count();
@@ -76,7 +80,10 @@ test("real browser captures fetch and generic events; selected rows hold through
     );
     assert.equal(await page.locator(".network-row").count(), before);
     assert.match(
-      await page.locator("#network-detail").textContent(),
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
       /Hello from a synthetic response/,
     );
     await page.getByRole("button", { name: /Jump to latest/ }).click();
@@ -291,15 +298,24 @@ test("demo interactions record user labels and custom bar changes", () =>
     );
     await page.getByRole("button", { name: /Published a preview/ }).click();
     assert.match(
-      await page.locator("#network-detail").textContent(),
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
       /demo.note/,
     );
     assert.match(
-      await page.locator("#network-detail").textContent(),
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
       /"environment": "Preview"/,
     );
     assert.match(
-      await page.locator("#network-detail").textContent(),
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
       /"level": "success"/,
     );
     await page.getByRole("button", { name: "Connection · ready" }).click();
@@ -481,4 +497,133 @@ test("popup cleanup and ownership survive synchronous rendering and independent 
       removed: false,
       anchorExpanded: "false",
     });
+  }));
+
+test("resource details load headers and content in a sandboxed frame and persistence survives reload", () =>
+  fixture(async (page) => {
+    await page.getByRole("button", { name: /GET \/src\/style\.css/ }).click();
+    const details = page.frameLocator(".network-detail-frame");
+    await details
+      .getByRole("button", { name: "Load resource preview", exact: true })
+      .click();
+    await details
+      .getByRole("heading", { name: /Loaded resource body/ })
+      .waitFor();
+    assert.match(
+      await details.locator("body").textContent(),
+      /content-type: text\/css/,
+    );
+    assert.match(await details.locator("body").textContent(), /:host/);
+    const retained = await page.evaluate(async () => {
+      const entry = window.inspector.store.entries.find(
+        (entry) =>
+          entry.kind === "resource" && entry.url.endsWith("/src/style.css"),
+      );
+      await window.inspector.store.persistence.flush();
+      return {
+        body: entry.resourceBody.bytes.length,
+        headers: entry.resourceResponseHeaders,
+      };
+    });
+    assert.ok(retained.body > 100);
+    await page.reload();
+    await page.waitForFunction(() => window.inspector);
+    const restored = await page.evaluate(() => {
+      const entry = window.inspector.store.entries.find(
+        (entry) => entry.restored && entry.resourceBody,
+      );
+      return (
+        entry && {
+          body: entry.resourceBody.bytes.length,
+          headers: entry.resourceResponseHeaders,
+        }
+      );
+    });
+    assert.deepEqual(restored, retained);
+    assert.equal(
+      await page.locator(".network-detail-frame").getAttribute("sandbox"),
+      "allow-same-origin",
+    );
+  }));
+
+test("content-type renderer isolates HTML and shows images; custom details get an iframe and cleanup", () =>
+  fixture(async (page) => {
+    await page.evaluate(async () => {
+      const { bodyPreview } = await import("/src/index.js");
+      const entry = window.inspector.store.add({
+        kind: "http",
+        method: "GET",
+        url: "https://example.com/preview",
+        status: 200,
+      });
+      window.inspector.store.preview(
+        entry,
+        "responseBody",
+        bodyPreview(
+          '<h1>Preview heading</h1><script>parent.document.body.dataset.injected="yes"</script><img src="https://example.com/should-not-load">',
+          10000,
+          "text/html",
+        ),
+      );
+    });
+    await page.getByRole("button", { name: /GET \/preview/ }).click();
+    const details = page.frameLocator(".network-detail-frame");
+    await details
+      .frameLocator(".network-html-preview")
+      .getByRole("heading", { name: "Preview heading" })
+      .waitFor();
+    assert.equal(
+      await details.locator(".network-html-preview").getAttribute("sandbox"),
+      "",
+    );
+    assert.equal(
+      await page.evaluate(() => document.body.dataset.injected),
+      undefined,
+    );
+    await page.evaluate(async () => {
+      const { createInspector, NetworkCapture, bodyPreview } = await import(
+        "/src/index.js"
+      );
+      window.inspector.destroy();
+      const store = new NetworkCapture();
+      window.cleanups = 0;
+      window.inspector = createInspector({
+        capture: false,
+        store,
+        open: true,
+        renderDetails: (context) => {
+          window.hasRendererFrame = context.iframe instanceof HTMLIFrameElement;
+          context.renderDefault();
+          const label = context.document.createElement("p");
+          label.textContent = "Custom details extension";
+          context.container.append(label);
+          return () => window.cleanups++;
+        },
+      });
+      const entry = store.add({
+        kind: "http",
+        method: "GET",
+        url: "https://example.com/image",
+        status: 200,
+      });
+      const binary = Uint8Array.from(
+        atob(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6Z1cAAAAASUVORK5CYII=",
+        ),
+        (c) => c.charCodeAt(0),
+      );
+      store.preview(
+        entry,
+        "responseBody",
+        bodyPreview(binary, 10000, "image/png"),
+      );
+    });
+    await page.mouse.move(0, 0);
+    await page.getByRole("button", { name: /GET \/image/ }).click();
+    await details.getByRole("img", { name: "Response body preview" }).waitFor();
+    await details.getByText("Custom details extension").waitFor();
+    assert.equal(await page.evaluate(() => window.hasRendererFrame), true);
+    const before = await page.evaluate(() => window.cleanups);
+    await page.evaluate(() => window.inspector.destroy());
+    assert.equal(await page.evaluate(() => window.cleanups), before + 1);
   }));

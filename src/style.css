@@ -304,12 +304,36 @@ svg {
   background: #8c97a6;
 }
 .network-detail {
-  overflow: auto;
+  overflow: hidden;
   min-width: 0;
   border-left: 1px solid var(--line);
-  padding: 15px 18px;
+  padding: 0;
 }
-.network-detail h3 {
+.network-detail-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.network-detail-content {
+  margin: 0;
+  padding: 15px 18px;
+  background: var(--panel);
+  color: var(--ink);
+  font: var(--text-12) var(--sans);
+}
+.network-html-preview {
+  width: 100%;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  background: white;
+}
+.network-media-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+}
+.network-detail-content h3 {
   font: 600 var(--text-13) var(--mono);
   margin: 0 0 10px;
   overflow-wrap: anywhere;
@@ -342,14 +366,14 @@ svg {
   font-size: var(--text-10);
   overflow-wrap: anywhere;
 }
-.network-detail details {
+.network-detail-content details {
   margin: 14px 0;
 }
-.network-detail summary {
+.network-detail-content summary {
   cursor: pointer;
   font-weight: 600;
 }
-.network-detail pre {
+.network-detail-content pre {
   font: var(--text-11) / 1.6 var(--mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;

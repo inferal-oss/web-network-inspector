@@ -1,5 +1,13 @@
-import { createInspector } from "../src/index.js";
-const inspector = createInspector({ open: true });
+import { createInspector, createPersistentCapture } from "../src/index.js";
+const store = await createPersistentCapture({
+  storage: (await import("../src/storage.js")).createIndexedDBStorage({
+    database: "web-network-inspector-demo",
+  }),
+});
+const inspector = createInspector({ store, open: true });
+window.addEventListener("pagehide", () => {
+  void store.persistence.flush().catch(() => {});
+});
 let count = 0;
 let environment = "Sandbox";
 

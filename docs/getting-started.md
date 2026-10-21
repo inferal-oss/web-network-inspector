@@ -98,4 +98,6 @@ Destroy removes the inspector UI and its transport wrappers, but keeps retained 
 
 ## Data stays in the page
 
-The inspector holds captured data in memory. It does not send telemetry, persist history, or contact a service. Captured URLs, headers, and bodies can contain sensitive application data, and there is no automatic redaction. Enable it only where capture is appropriate.
+The inspector holds captured data in memory by default. Use [local history](storage.md) to opt into bounded IndexedDB persistence. It does not send telemetry. [Resource previews](details.md) make a separate GET only when requested. Captured URLs, headers, and bodies can contain sensitive application data, and there is no automatic redaction. Enable it only where capture is appropriate.
+
+See [request details](details.md) to customize the iframe renderer and MIME previews.

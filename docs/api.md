@@ -6,16 +6,17 @@ The [React component](react.md) wraps this API with React mounting and cleanup.
 
 Import from `web-network-inspector` or the source's `src/index.js`.
 
-| Option       | Default                         | Meaning                                                                                    |
-| ------------ | ------------------------------- | ------------------------------------------------------------------------------------------ |
-| `scope`      | `window`                        | Browser window whose transports are captured.                                              |
-| `container`  | `scope.document.body`           | DOM container for the host element.                                                        |
-| `filter`     | unset                           | Synchronous predicate for an instance-owned store. See [capture filters](filtering.md).    |
-| `store`      | `new NetworkCapture()`          | Retained history shared with this view.                                                    |
-| `capture`    | `true`                          | Install transport wrappers. Set false for manual events or another view of a shared store. |
-| `open`       | `false`                         | Start with the waterfall expanded.                                                         |
-| `stylesheet` | Module-relative `style.css` URL | CSS URL loaded inside the shadow root. Override for bundled assets.                        |
-| `nonce`      | unset                           | Optional nonce on the stylesheet link for the host's CSP policy.                           |
+| Option          | Default                         | Meaning                                                                                    |
+| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------ |
+| `scope`         | `window`                        | Browser window whose transports are captured.                                              |
+| `container`     | `scope.document.body`           | DOM container for the host element.                                                        |
+| `filter`        | unset                           | Synchronous predicate for an instance-owned store. See [capture filters](filtering.md).    |
+| `store`         | `new NetworkCapture()`          | Retained history shared with this view.                                                    |
+| `capture`       | `true`                          | Install transport wrappers. Set false for manual events or another view of a shared store. |
+| `open`          | `false`                         | Start with the waterfall expanded.                                                         |
+| `stylesheet`    | Module-relative `style.css` URL | CSS URL loaded inside the shadow root. Override for bundled assets.                        |
+| `renderDetails` | Built-in content-type renderer  | Function receiving a sandboxed iframe and DOM context. See [request details](details.md).  |
+| `nonce`         | unset                           | Optional nonce on the stylesheet link for the host's CSP policy.                           |
 
 Returns `host`, `root` (the shadow root), `store`, and the methods below.
 The host owns its styles and does not change the page's padding or global CSS.
@@ -109,6 +110,10 @@ not trap focus. Applications must provide appropriate keyboard behavior for
 custom content. For asynchronous content, start a request in the renderer,
 update DOM on completion, and return cleanup that cancels or ignores stale work.
 
+### `loadResource(entry)`
+
+Load a separate, bounded resource preview with visible response headers and MIME type. It requires a retained browser resource entry and the capture owner. See [request details](details.md) for the distinction from the original load.
+
 ### `setOpen(boolean)` and `destroy()`
 
 Expand or collapse the waterfall. `destroy()` removes the UI, listeners, render
@@ -140,13 +145,13 @@ time origin. Its optional `filter` chooses which network entries are retained;
 see [capture filters](filtering.md). `installNetworkCapture(scope, store?)` returns `store`,
 `annotateMessage`, and idempotent `disconnect()`.
 
-| Limit                           | Default | Maximum    |
-| ------------------------------- | ------- | ---------- |
-| `entries`                       | 2000    | 100000     |
-| `messages` per socket           | 1000    | 100000     |
-| `preview` bytes per body        | 16384   | 1048576    |
-| `bytes` retained preview bytes  | 8388608 | 1073741824 |
-| `readers` concurrent body reads | 8       | 64         |
+| Limit                           | Default  | Maximum    |
+| ------------------------------- | -------- | ---------- |
+| `entries`                       | 5000     | 100000     |
+| `messages` per socket           | 2000     | 100000     |
+| `preview` bytes per body        | 262144   | 1048576    |
+| `bytes` retained preview bytes  | 33554432 | 1073741824 |
+| `readers` concurrent body reads | 8        | 64         |
 
 All limits are positive integers. `store.setLimits({ entries, messages, preview,
 bytes })` validates atomically and immediately trims history, even while paused.
@@ -158,7 +163,7 @@ are `http`, `socket`, `message`, `resource`, and `event`. Common fields include
 `id`, `kind`, `start`, optional `end`, `status`, `url`, `nearEvent`, and `eventId`.
 Transport fields include `transport`, `method`, `requestHeaders`,
 `responseHeaders`, `requestBody`, `responseBody`, `body`, `direction`, and
-`connection`. Annotation fields include `protocol`, `label`, and `correlationId`.
+`connection`. Resource preview fields include `resourceBody`, `resourceResponseHeaders`, and `resourceRequestHeaders`; their separate GET is identified by `resourceFetchedAt`, `resourceStatus`, and `resourcePreviewStatus`. Annotation fields include `protocol`, `label`, and `correlationId`.
 Fields can arrive later and entries may be evicted. Treat entries as read-only.
 
 `store.paused = true` skips new entries and body previews. Existing request
@@ -172,3 +177,7 @@ labels, and may still show expired rows, but releases their payloads.
 preview. `previewText(preview)` returns text or a hex dump. A preview contains
 `bytes`, `size` (possibly null), `text`, `truncated`, and optional `note` or
 `expired`. Expired bodies keep no byte data.
+
+## Persistent history and details rendering
+
+See [local history](storage.md) for `createPersistentCapture`, IndexedDB storage, retention, and the storage lifecycle. See [request details](details.md) for content-type previews, sandboxed custom rendering, and resource loading. WebSocket closes add a point event with `kind: "socket"`, `socketEvent: "close"`, a connection ID, close code, reason, and clean-close flag, as well as finishing the connection lifetime row.

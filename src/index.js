@@ -20,7 +20,10 @@ export function createInspector({
   open = false,
   stylesheet = new URL("./style.css", import.meta.url).href,
   nonce,
+  renderDetails,
 } = {}) {
+  if (renderDetails !== undefined && typeof renderDetails !== "function")
+    throw new TypeError("renderDetails must be a function.");
   if (store && filter !== undefined)
     throw new TypeError(
       "Set filter on a shared NetworkCapture instead of on the view.",
@@ -40,7 +43,10 @@ export function createInspector({
   template.innerHTML = panelHTML;
   root.append(link, template.content.cloneNode(true));
   container.append(host);
-  const ui = setupNetworkActivity(root, scope, store);
+  const ui = setupNetworkActivity(root, scope, store, {
+    renderDetails,
+    loadResource: transport?.loadResource,
+  });
   const items = new Map();
   let popup = null,
     popupAnchor = null,
@@ -191,6 +197,12 @@ export function createInspector({
     host,
     root,
     store,
+    loadResource(entry) {
+      ensure();
+      if (!transport)
+        throw new Error("This view does not own network capture.");
+      return transport.loadResource(entry);
+    },
     recordEvent(event) {
       ensure();
       return store.recordEvent(event);
@@ -229,6 +241,9 @@ export function createInspector({
   ui.setOpen(!!open);
   return api;
 }
+
+export { renderDefaultDetails } from "./detail-renderer.js";
+export { createPersistentCapture, createIndexedDBStorage } from "./storage.js";
 
 export {
   byHostnames,

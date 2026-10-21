@@ -131,7 +131,7 @@ test("live retention changes trim each socket and entry count immediately, inclu
   );
   store.clear();
   assert.equal(store.limits.entries, 10);
-  assert.equal(new NetworkCapture().limits.entries, 2000);
+  assert.equal(new NetworkCapture().limits.entries, 5000);
 });
 test("retention updates trim existing and delayed previews and never restore discarded bytes", () => {
   const store = new NetworkCapture(),
@@ -364,6 +364,49 @@ test("native WebSocket semantics, binary messages, failed sends, and close metad
   socket.close();
   assert.equal(store.entries[0].status, "Closed");
   assert.equal(store.entries[0].closeCode, 1000);
+  const closed = store.entries.at(-1);
+  assert.equal(closed.label, "WebSocket disconnected");
+  assert.equal(closed.connection, store.entries[0].id);
+  assert.equal(closed.closeCode, 1000);
+  assert.equal(closed.closeReason, "done");
+  assert.equal(closed.start, closed.end);
+});
+
+test("resource previews use a separate bounded GET without changing original timing or duplicating capture", async () => {
+  let calls = 0;
+  const host = scope(async (_url, init) => {
+    calls++;
+    assert.equal(init.cache, "force-cache");
+    assert.equal(init.credentials, "same-origin");
+    return new Response("resource content", {
+      headers: { "content-type": "text/css", "x-demo": "preview" },
+    });
+  });
+  const store = new NetworkCapture({ limits: { preview: 8 } });
+  const capture = installNetworkCapture(host, store);
+  const entry = store.add({
+    kind: "resource",
+    method: "GET",
+    url: "http://localhost/app.css",
+    start: 1,
+    end: 2,
+    status: "Loaded",
+  });
+  await capture.loadResource(entry);
+  assert.equal(calls, 1);
+  assert.equal(store.entries.length, 1);
+  assert.equal(entry.start, 1);
+  assert.equal(entry.end, 2);
+  assert.match(entry.resourceResponseHeaders, /x-demo: preview/);
+  assert.equal(entry.resourceBody.contentType, "text/css");
+  assert.equal(previewText(entry.resourceBody), "resource");
+  assert.equal(entry.resourceBody.truncated, true);
+  store.setLimits({ preview: 4 });
+  assert.equal(entry.resourceBody.bytes.length, 4);
+  store.clear();
+  assert.equal(store.bytes, 0);
+  await assert.rejects(capture.loadResource(entry), /retained/);
+  capture.disconnect();
 });
 test("resume recording on an already-open socket and capture subsequent messages after clear", () => {
   const host = scope(),
