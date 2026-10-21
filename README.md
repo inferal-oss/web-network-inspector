@@ -102,3 +102,14 @@ on a free port and close it afterward. The package export list includes only
 library files, public documentation, and license notices.
 
 MIT licensed. See [LICENSE](LICENSE) and [provenance and notices](NOTICE.md).
+
+## Interactive demo
+
+The example includes user-triggered HTTP requests, an event label and level,
+and three custom bar elements: an environment select, a live event counter,
+and a connection button with an application-owned popup. Application events are
+recorded when you interact with a control.
+
+After installing Chromium, run `npm run screenshot` to exercise the controls
+and regenerate `examples/screenshots/demo.png` and `popup.png`. The screenshot
+script closes its browser and local server when finished.

@@ -253,3 +253,45 @@ test("example server serves only public source and example assets", () =>
       200,
     );
   }));
+
+test("demo interactions record user labels and custom bar changes", () =>
+  fixture(async (page) => {
+    await page.getByLabel("Demo environment").selectOption("Preview");
+    await page
+      .getByLabel("Event label", { exact: true })
+      .fill("Published a preview");
+    await page.getByLabel("Level", { exact: true }).selectOption("success");
+    await page
+      .getByRole("button", { name: "Record an application event", exact: true })
+      .click();
+    await page.getByRole("button", { name: /Published a preview/ }).waitFor();
+    assert.match(
+      await page.locator("#network-items").textContent(),
+      /2 app events/,
+    );
+    await page.getByRole("button", { name: /Published a preview/ }).click();
+    assert.match(
+      await page.locator("#network-detail").textContent(),
+      /demo.note/,
+    );
+    assert.match(
+      await page.locator("#network-detail").textContent(),
+      /"environment": "Preview"/,
+    );
+    assert.match(
+      await page.locator("#network-detail").textContent(),
+      /"level": "success"/,
+    );
+    await page.getByRole("button", { name: "Connection · ready" }).click();
+    assert.match(
+      await page.getByRole("dialog").textContent(),
+      /Environment: Preview/,
+    );
+    await page
+      .getByRole("button", { name: "Record a check", exact: true })
+      .click();
+    assert.match(
+      await page.locator("#network-items").textContent(),
+      /3 app events/,
+    );
+  }));

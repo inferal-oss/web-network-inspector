@@ -3,26 +3,76 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Web Network Inspector</title>
+    <title>Web Network Inspector · Interactive demo</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <main>
-      <p class="eyebrow">A small, extensible browser tool</p>
-      <h1>Web Network Inspector</h1>
-      <p>
-        See requests, messages, and application events together. Select a row to
-        hold its place while new traffic arrives.
-      </p>
-      <div class="actions">
-        <button id="request">Fetch example JSON</button>
-        <button id="event">Record an application event</button>
+      <header class="masthead">
+        <a class="wordmark" href="./index.html"
+          ><span class="logo" aria-hidden="true">↗</span> Web Network
+          Inspector</a
+        >
+        <span class="demo-tag">INTERACTIVE DEMO</span>
+      </header>
+      <section class="intro">
+        <p class="eyebrow">Your app. Your events. One timeline.</p>
+        <h1>See what happens<br />when you click.</h1>
+        <p>
+          Make a request, record a moment, or change a custom bar control. Every
+          interaction appears in the inspector below.
+        </p>
+      </section>
+      <div class="demo-grid">
+        <section class="card" aria-labelledby="traffic-title">
+          <span class="step">01 / NETWORK TRAFFIC</span>
+          <h2 id="traffic-title">Send a real request</h2>
+          <p>
+            Fetch a local JSON response and inspect its timing, headers, and
+            body.
+          </p>
+          <button id="request" class="primary">
+            Fetch example JSON <span aria-hidden="true">↗</span>
+          </button>
+          <p id="result" class="result" role="status">
+            Ready to send · local example data
+          </p>
+        </section>
+        <section class="card" aria-labelledby="event-title">
+          <span class="step">02 / APPLICATION EVENTS</span>
+          <h2 id="event-title">Record your own moment</h2>
+          <div class="event-fields">
+            <label
+              >Event label<input
+                id="event-label"
+                value="Saved a draft"
+                maxlength="100"
+            /></label>
+            <label
+              >Level<select id="event-level" aria-label="Level">
+                <option value="info">Info</option>
+                <option value="success">Success</option>
+                <option value="warning">Warning</option>
+              </select></label
+            >
+          </div>
+          <button id="event">
+            Record an application event <span aria-hidden="true">+</span>
+          </button>
+          <p id="event-result" class="result" role="status">
+            Your label and payload, captured together.
+          </p>
+        </section>
       </div>
-      <p id="result" role="status">The inspector is ready below.</p>
-      <p>
-        The “Connection” item demonstrates a custom bar control and popup. This
-        example uses synthetic data and a local response.
-      </p>
+      <div class="extension-note">
+        <span class="extension-symbol" aria-hidden="true">↙</span>
+        <p>
+          <strong>The bar is yours, too.</strong> Change the environment, watch
+          the event counter, or open the connection popup. These are custom
+          elements added through the public API.
+        </p>
+        <span class="local-tag">LOCAL ONLY · NO TELEMETRY</span>
+      </div>
     </main>
     <script type="module" src="./demo.js"></script>
   </body>

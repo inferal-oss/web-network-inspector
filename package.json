@@ -23,7 +23,8 @@
     "start": "node scripts/serve.mjs",
     "check": "prettier --check . && node --check src/index.js && node --check src/network-capture.js && node --check src/network-activity.js && node --check src/network-json.js",
     "test": "node --test test/*.test.js",
-    "test:browser": "node --test test/browser/*.test.mjs"
+    "test:browser": "node --test test/browser/*.test.mjs",
+    "screenshot": "node scripts/screenshot.mjs"
   },
   "devDependencies": {
     "linkedom": "0.18.12",
