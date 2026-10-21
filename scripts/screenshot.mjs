@@ -19,12 +19,26 @@ try {
     viewport: { width: 1440, height: 1100 },
     deviceScaleFactor: 1,
   });
+  await page.route("https://httpbin.org/anything", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        json: {
+          message: "Hello from a synthetic response",
+          items: [
+            { id: 1, name: "Blue" },
+            { id: 2, name: "Green" },
+          ],
+        },
+      }),
+    }),
+  );
   await page.goto(`http://127.0.0.1:${server.address().port}`);
   await page.getByRole("button", { name: "Clear", exact: true }).click();
   await page
     .getByRole("button", { name: "Fetch example JSON", exact: true })
     .click();
-  await page.getByRole("button", { name: /GET \/echo/ }).waitFor();
+  await page.getByRole("button", { name: /POST \/anything/ }).waitFor();
   await page.getByLabel("Demo environment").selectOption("Preview");
   await page.getByLabel("Level", { exact: true }).selectOption("success");
   await page

@@ -21,8 +21,9 @@ npm start
 ```
 
 Open the local URL printed by the server. The example generates synthetic
-application events and fetches a local JSON response. `PORT` selects another
-port. No external service is needed.
+application events and sends synthetic JSON to httpbin.org when you click the
+request button. A bundled response keeps the demo usable if httpbin is unavailable.
+`PORT` selects another port.
 
 ## Embed
 
@@ -113,3 +114,13 @@ recorded when you interact with a control.
 After installing Chromium, run `npm run screenshot` to exercise the controls
 and regenerate `examples/screenshots/demo.png` and `popup.png`. The screenshot
 script closes its browser and local server when finished.
+
+## Project website
+
+`npm run build:site` builds the landing page, live demo, API reference, and
+styling guide into `dist/`. The API page is generated from `docs/api.md`.
+`npm run test:site` checks links, static-hosting paths, docs, mobile layout,
+and demo interactions under `/web-network-inspector/`.
+
+GitHub Pages deploys the inspector repository's own artifact on successful
+main-branch builds. The organization site supplies the shared domain.

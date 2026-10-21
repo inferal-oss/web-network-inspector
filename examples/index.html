@@ -28,14 +28,14 @@
           <span class="step">01 / NETWORK TRAFFIC</span>
           <h2 id="traffic-title">Send a real request</h2>
           <p>
-            Fetch a local JSON response and inspect its timing, headers, and
-            body.
+            Send synthetic JSON to httpbin.org and inspect its timing, headers,
+            and echoed body.
           </p>
           <button id="request" class="primary">
             Fetch example JSON <span aria-hidden="true">↗</span>
           </button>
           <p id="result" class="result" role="status">
-            Ready to send · local example data
+            Ready to send · httpbin.org · bundled fallback
           </p>
         </section>
         <section class="card" aria-labelledby="event-title">
@@ -71,7 +71,7 @@
           the event counter, or open the connection popup. These are custom
           elements added through the public API.
         </p>
-        <span class="local-tag">LOCAL ONLY · NO TELEMETRY</span>
+        <span class="local-tag">IN-MEMORY CAPTURE · SYNTHETIC DATA</span>
       </div>
     </main>
     <script type="module" src="./demo.js"></script>

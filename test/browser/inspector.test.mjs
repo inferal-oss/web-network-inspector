@@ -16,6 +16,20 @@ async function fixture(run) {
     );
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    await page.route("https://httpbin.org/anything", (route) =>
+      route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          json: {
+            message: "Hello from a synthetic response",
+            items: [
+              { id: 1, name: "Blue" },
+              { id: 2, name: "Green" },
+            ],
+          },
+        }),
+      }),
+    );
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.waitForFunction(() => window.inspector);
     await run(page);
@@ -30,11 +44,12 @@ test("real browser captures fetch and generic events; selected rows hold through
     await page
       .getByRole("button", { name: "Fetch example JSON", exact: true })
       .click();
-    await page.getByRole("button", { name: /GET \/echo/ }).waitFor();
-    await page.getByRole("button", { name: /GET \/echo/ }).click();
+    await page.getByRole("button", { name: /POST \/anything/ }).waitFor();
+    await page.getByRole("button", { name: /POST \/anything/ }).click();
     await page
       .locator("#network-detail")
-      .getByText('"message":', { exact: true })
+      .locator(".network-json-tree")
+      .first()
       .waitFor();
     assert.match(
       await page.locator("#network-detail").textContent(),

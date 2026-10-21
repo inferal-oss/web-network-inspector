@@ -24,10 +24,13 @@
     "check": "prettier --check . && node --check src/index.js && node --check src/network-capture.js && node --check src/network-activity.js && node --check src/network-json.js",
     "test": "node --test test/*.test.js",
     "test:browser": "node --test test/browser/*.test.mjs",
-    "screenshot": "node scripts/screenshot.mjs"
+    "screenshot": "node scripts/screenshot.mjs",
+    "build:site": "node scripts/build-site.mjs",
+    "test:site": "node --test test/site/*.test.mjs"
   },
   "devDependencies": {
     "linkedom": "0.18.12",
+    "marked": "18.1.1",
     "playwright": "1.62.1",
     "prettier": "3.6.2"
   }

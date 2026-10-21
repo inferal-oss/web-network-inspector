@@ -93,9 +93,34 @@ document.getElementById("request").addEventListener("click", async () => {
   button.disabled = true;
   result.textContent = "Sending request…";
   try {
-    const response = await fetch("/echo");
-    const data = await response.json();
-    result.textContent = `${response.status} OK · ${data.items.length} items · ${data.message}`;
+    let data,
+      source = "httpbin.org";
+    try {
+      const response = await fetch("https://httpbin.org/anything", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          environment,
+          message: "Hello from a synthetic response",
+          items: [
+            { id: 1, name: "Blue" },
+            { id: 2, name: "Green" },
+          ],
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) throw new Error("httpbin is unavailable");
+      data = (await response.json()).json;
+      if (!Array.isArray(data?.items))
+        throw new Error("Unexpected httpbin response");
+    } catch {
+      source = "Bundled sample · httpbin unavailable";
+      const response = await fetch(new URL("./sample.json", import.meta.url));
+      if (!response.ok)
+        throw new Error("The bundled sample could not be loaded");
+      data = await response.json();
+    }
+    result.textContent = `200 OK · ${data.items.length} items · ${source}`;
   } catch (error) {
     result.textContent = error.message;
   } finally {

@@ -12,3 +12,7 @@ This library has no runtime dependencies and includes no third-party fonts,
 icons, vendored source, or other assets. Development dependencies are not
 redistributed in the package. Their licenses remain with their respective
 packages: LinkeDOM (ISC), Playwright (Apache-2.0), and Prettier (MIT).
+
+The website's Inferal sponsorship mark is reproduced from the public footer
+asset at https://notabenda.org/assets/inferal-mark.svg. It identifies the sponsor
+and is separate from the reusable inspector UI.

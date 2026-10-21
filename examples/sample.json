@@ -1,0 +1,7 @@
+{
+  "message": "Hello from a synthetic response",
+  "items": [
+    { "id": 1, "name": "Blue" },
+    { "id": 2, "name": "Green" }
+  ]
+}

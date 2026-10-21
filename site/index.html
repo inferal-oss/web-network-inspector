@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web Network Inspector · Your network. Your app. One timeline.</title>
+    <meta
+      name="description"
+      content="An extensible in-page network inspector for requests, messages, and application events. Plain JavaScript, bounded capture, and a toolbar that belongs to your app."
+    />
+    <link rel="icon" href="{{BASE}}assets/wni-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="{{BASE}}assets/site.css" />
+    <script type="module" src="{{BASE}}assets/site.js"></script>
+  </head>
+  <body>
+    {{HEADER}}
+    <main id="main">
+      <section class="hero wrap">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="live-dot"></span> OPEN SOURCE · PLAIN JAVASCRIPT
+          </p>
+          <h1>Your network.<br />Your app.<br /><span>One timeline.</span></h1>
+          <p class="hero-description">
+            See the request. Read the message. Find the moment that set it all
+            in motion. A network inspector that lives right inside your
+            application.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="{{BASE}}demo/"
+              >Open the live demo <span aria-hidden="true">↗</span></a
+            ><a class="button quiet" href="{{BASE}}docs/"
+              >Start building <span aria-hidden="true">→</span></a
+            >
+          </div>
+          <div class="install-command">
+            <code>npm install github:inferal-oss/web-network-inspector</code
+            ><button
+              class="copy-button"
+              data-copy="npm install github:inferal-oss/web-network-inspector"
+              aria-label="Copy install command"
+            >
+              Copy
+            </button>
+          </div>
+          <p class="install-note">
+            Install the current source from GitHub. No runtime dependencies.
+          </p>
+        </div>
+        <div class="hero-aside">
+          <div class="stack-note">
+            <span class="tiny-caps">SMALL SURFACE. OPEN POSSIBILITIES.</span
+            ><span class="version">v{{VERSION}}</span>
+          </div>
+          <div class="signal-sketch" aria-hidden="true">
+            <div class="sketch-line">
+              <span class="sketch-label">USER EVENT</span
+              ><i class="sketch-event"></i>
+            </div>
+            <div class="sketch-line">
+              <span class="sketch-label">HTTP REQUEST</span
+              ><i class="sketch-request"></i>
+            </div>
+            <div class="sketch-line">
+              <span class="sketch-label">SOCKET MESSAGE</span
+              ><i class="sketch-message"></i>
+            </div>
+            <div class="sketch-line">
+              <span class="sketch-label">YOUR CONTEXT</span
+              ><i class="sketch-context"></i>
+            </div>
+            <span class="sketch-caption"
+              >A little more context.<br />A lot less guesswork.</span
+            >
+          </div>
+          <div class="hero-facts">
+            <span>Framework independent</span><span>Held in page memory</span
+            ><span>Yours to extend</span>
+          </div>
+        </div>
+      </section>
+      <section class="preview-section wrap" aria-labelledby="preview-title">
+        <div class="section-label">
+          <h2 id="preview-title">The whole exchange, in view.</h2>
+          <a href="{{BASE}}demo/"
+            >Try it yourself <span aria-hidden="true">↗</span></a
+          >
+        </div>
+        <div class="preview-window">
+          <div class="window-chrome">
+            <span class="window-dots" aria-hidden="true">● ● ●</span
+            ><span>web-network-inspector / interactive demo</span
+            ><span class="preview-badge">REAL INSPECTOR</span>
+          </div>
+          <div class="preview-image">
+            <img
+              src="{{BASE}}assets/demo.png"
+              alt="Web Network Inspector showing a request, custom application events, environment selector, and expandable JSON event data"
+              width="1440"
+              height="1100"
+              fetchpriority="high"
+            />
+          </div>
+        </div>
+        <p class="figure-note">
+          A capture from the included demo. Custom events, real requests, and
+          your application’s own controls.
+        </p>
+      </section>
+      <section class="capabilities wrap">
+        <div class="section-intro">
+          <p class="eyebrow">BUILT FOR THE SPACE BETWEEN</p>
+          <h2>A request is only<br />part of the story.</h2>
+          <p>
+            Bring transport details and application context together, without
+            building a debugging UI from scratch.
+          </p>
+        </div>
+        <div class="feature-list">
+          <article>
+            <span class="feature-number">01</span>
+            <div>
+              <h3>Inspect the full exchange</h3>
+              <p>
+                Fetch, XMLHttpRequest, WebSocket frames, and browser resource
+                timings. Read retained headers and bodies as text, hex, or
+                expandable JSON.
+              </p>
+            </div>
+          </article>
+          <article>
+            <span class="feature-number">02</span>
+            <div>
+              <h3>Put your own events on the map</h3>
+              <p>
+                A saved draft. A changed filter. A connection check. Record your
+                own labels and payloads alongside the traffic they help explain.
+              </p>
+            </div>
+          </article>
+          <article>
+            <span class="feature-number">03</span>
+            <div>
+              <h3>Make room for your application</h3>
+              <p>
+                Add native controls, live status elements, and application-owned
+                popups. The bar is an extension point, not a closed box.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section class="extension-section">
+        <div class="wrap extension-grid">
+          <div>
+            <p class="eyebrow">A FEW LINES GO A LONG WAY</p>
+            <h2>Small API.<br />Your vocabulary.</h2>
+            <p>
+              Keep the event types, controls, and content that make sense for
+              your app. There’s no backend protocol to adopt.
+            </p>
+            <a class="text-link" href="{{BASE}}docs/api/"
+              >Explore the API <span aria-hidden="true">→</span></a
+            >
+          </div>
+          <div class="code-showcase">
+            <div
+              class="code-tabs"
+              role="tablist"
+              aria-label="Extension examples"
+            >
+              <button
+                id="tab-events"
+                role="tab"
+                aria-selected="true"
+                aria-controls="example-events"
+                data-code-tab="events"
+              >
+                Events</button
+              ><button
+                id="tab-controls"
+                role="tab"
+                aria-selected="false"
+                aria-controls="example-controls"
+                tabindex="-1"
+                data-code-tab="controls"
+              >
+                Bar controls</button
+              ><button
+                id="tab-popups"
+                role="tab"
+                aria-selected="false"
+                aria-controls="example-popups"
+                tabindex="-1"
+                data-code-tab="popups"
+              >
+                Popups
+              </button>
+            </div>
+            <div
+              id="example-events"
+              role="tabpanel"
+              aria-labelledby="tab-events"
+            >
+              <pre><code>inspector.recordEvent({
+  type: 'document.saved',
+  label: 'Saved a draft',
+  correlationId: 'example-document',
+  data: JSON.stringify({ revision: 3 }),
+});</code></pre>
+            </div>
+            <div
+              id="example-controls"
+              role="tabpanel"
+              aria-labelledby="tab-controls"
+              hidden
+            >
+              <pre><code>const status = document.createElement('span');
+status.textContent = 'Ready';
+
+inspector.addBarItem({
+  id: 'connection-status',
+  element: status,
+});</code></pre>
+            </div>
+            <div
+              id="example-popups"
+              role="tabpanel"
+              aria-labelledby="tab-popups"
+              hidden
+            >
+              <pre><code>inspector.openPopup({
+  title: 'Connection details',
+  anchor: connectionButton,
+  content: ({ container }) =&gt; {
+    container.textContent = 'Ready to go.';
+  },
+});</code></pre>
+            </div>
+            <div class="code-footnote">
+              <span>JavaScript · works with your framework</span
+              ><a href="{{BASE}}docs/">Get started →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="boundaries wrap">
+        <div>
+          <p class="eyebrow">DELIBERATELY WELL BEHAVED</p>
+          <h2>Useful detail.<br />Clear boundaries.</h2>
+        </div>
+        <div class="boundary-grid">
+          <article>
+            <h3>Browse without the jump</h3>
+            <p>
+              Select a row or browse the waterfall to hold your place while new
+              traffic keeps arriving.
+            </p>
+          </article>
+          <article>
+            <h3>Keep capture bounded</h3>
+            <p>
+              Set limits for retained entries, messages, and preview bytes.
+              Adjust them without restarting the inspector.
+            </p>
+          </article>
+          <article>
+            <h3>Match your application</h3>
+            <p>
+              Theme through CSS variables, add an override stylesheet, or
+              replace the styles altogether.
+            </p>
+            <a href="{{BASE}}docs/styling/">Read the styling guide →</a>
+          </article>
+          <article>
+            <h3>Know where data goes</h3>
+            <p>
+              Capture stays in page memory. No telemetry or built-in
+              persistence. Enable it where inspecting sensitive traffic is
+              appropriate.
+            </p>
+          </article>
+        </div>
+      </section>
+      <section class="closing wrap">
+        <div>
+          <p class="eyebrow">TAKE A CLOSER LOOK</p>
+          <h2>Make a request.<br />See what follows.</h2>
+        </div>
+        <div class="closing-actions">
+          <a class="button primary" href="{{BASE}}demo/"
+            >Explore the live demo ↗</a
+          ><a
+            class="text-link"
+            href="https://github.com/inferal-oss/web-network-inspector"
+            >Browse the source on GitHub →</a
+          >
+        </div>
+      </section>
+    </main>
+    {{FOOTER}}
+  </body>
+</html>
