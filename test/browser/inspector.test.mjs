@@ -334,3 +334,88 @@ test("iterable headers reach the server and remain visible in capture", () =>
     assert.equal(sent.body, '{"message":"hello"}');
     assert.match(result.captured, /x-demo: present/);
   }));
+
+test("capture identifies requests from the inspected window and other windows without reading their streams", () =>
+  fixture(async (page) => {
+    const delivered = [];
+    await page.route("**/echo?request=*", async (route) => {
+      delivered.push({
+        url: route.request().url(),
+        method: route.request().method(),
+        headers: await route.request().allHeaders(),
+        body: route.request().postData(),
+      });
+      await route.continue();
+    });
+    const result = await page.evaluate(async () => {
+      const { installNetworkCapture } = await import("/src/network-capture.js");
+      const frames = [];
+      let capture;
+      try {
+        for (let i = 0; i < 2; i++) {
+          const frame = document.createElement("iframe");
+          const loaded = new Promise((resolve) =>
+            frame.addEventListener("load", resolve, { once: true }),
+          );
+          frame.src = "/echo";
+          document.body.append(frame);
+          frames.push(frame);
+          await loaded;
+        }
+        const target = frames[0].contentWindow;
+        const nativeFetch = target.fetch;
+        const before = [];
+        target.fetch = function (input, init) {
+          before.push({ bodyUsed: input.bodyUsed, locked: input.body.locked });
+          return nativeFetch.call(this, input, init);
+        };
+        capture = installNetworkCapture(target);
+        const constructors = [
+          target.Request,
+          window.Request,
+          frames[1].contentWindow.Request,
+        ];
+        for (let i = 0; i < constructors.length; i++) {
+          const request = new constructors[i](
+            new URL(`/echo?request=${i}`, location.href),
+            {
+              method: "POST",
+              headers: { "x-demo": `window-${i}` },
+              body: `message-${i}`,
+            },
+          );
+          await target.fetch(request);
+        }
+        return {
+          before,
+          entries: capture.store.entries
+            .filter((entry) => entry.kind === "http")
+            .map((entry) => ({
+              url: entry.url,
+              method: entry.method,
+              headers: entry.requestHeaders,
+              note: entry.requestBody?.note,
+            })),
+        };
+      } finally {
+        capture?.disconnect();
+        for (const frame of frames) frame.remove();
+      }
+    });
+    assert.equal(delivered.length, 3);
+    assert.equal(result.entries.length, 3);
+    for (let i = 0; i < 3; i++) {
+      assert.equal(result.before[i].bodyUsed, false);
+      assert.equal(result.before[i].locked, false);
+      assert.equal(delivered[i].method, "POST");
+      assert.equal(delivered[i].headers["x-demo"], `window-${i}`);
+      assert.equal(delivered[i].body, `message-${i}`);
+      assert.equal(result.entries[i].url, delivered[i].url);
+      assert.equal(result.entries[i].method, "POST");
+      assert.match(
+        result.entries[i].headers,
+        new RegExp(`x-demo: window-${i}`),
+      );
+      assert.match(result.entries[i].note, /not read/);
+    }
+  }));

@@ -326,6 +326,10 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
   const originalFetch = scope.fetch,
     OriginalSocket = scope.WebSocket,
     OriginalXHR = scope.XMLHttpRequest;
+  const requestUrl = Object.getOwnPropertyDescriptor(
+    (scope.Request ?? globalThis.Request)?.prototype ?? {},
+    "url",
+  )?.get;
   const sockets = new WeakMap(),
     cleanups = new Set(),
     activeReaders = new Set();
@@ -489,8 +493,13 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
       let entry;
       safe(() => {
         const request =
-          typeof Request !== "undefined" && input instanceof Request
-            ? input
+          input !== null && typeof input === "object"
+            ? safe(() => {
+                // The native getter checks the Request brand across windows.
+                // It does not consume or clone the request's stream.
+                requestUrl.call(input);
+                return input;
+              })
             : null;
         const headers = init?.headers ?? request?.headers;
         entry = store.add({
