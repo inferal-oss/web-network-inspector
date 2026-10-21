@@ -273,8 +273,9 @@ select {
 }
 .columns-example pre {
   padding: 12px;
-  background: #f4f6fb;
-  border: 1px solid #dce3ef;
+  background: #14243a;
+  color: #dbeafe;
+  border: 1px solid #3c587c;
   border-radius: 8px;
   overflow: auto;
   font-size: 0.6875rem;

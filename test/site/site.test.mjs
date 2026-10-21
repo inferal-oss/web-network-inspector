@@ -311,36 +311,38 @@ test("demo shows an unavailable WebSocket service and permits retry", () =>
     );
   }));
 
-test("syntax colors remain readable on documentation code surfaces", () =>
-  pageAt("docs/react/", async (page) => {
-    const contrast = await page.evaluate(() => {
-      const luminance = (color) => {
-        const values = color
-          .match(/[\d.]+/g)
-          .slice(0, 3)
-          .map(Number)
-          .map((v) => v / 255)
-          .map((v) =>
-            v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4,
-          );
-        return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
-      };
-      return [...document.querySelectorAll("pre code.hljs span")].map(
-        (token) => {
-          const a = luminance(getComputedStyle(token).color),
-            b = luminance(
-              getComputedStyle(token.closest("pre")).backgroundColor,
+test("syntax colors remain readable on documentation and demo code surfaces", async () => {
+  for (const path of ["docs/react/", "demo/"])
+    await pageAt(path, async (page) => {
+      const contrast = await page.evaluate(() => {
+        const luminance = (color) => {
+          const values = color
+            .match(/[\d.]+/g)
+            .slice(0, 3)
+            .map(Number)
+            .map((v) => v / 255)
+            .map((v) =>
+              v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4,
             );
-          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-        },
+          return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+        };
+        return [...document.querySelectorAll("pre code.hljs span")].map(
+          (token) => {
+            const a = luminance(getComputedStyle(token).color),
+              b = luminance(
+                getComputedStyle(token.closest("pre")).backgroundColor,
+              );
+            return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          },
+        );
+      });
+      assert.ok(contrast.length > 0);
+      assert.ok(
+        contrast.every((ratio) => ratio >= 4.5),
+        "Highlighted text must meet normal-text contrast",
       );
     });
-    assert.ok(contrast.length > 0);
-    assert.ok(
-      contrast.every((ratio) => ratio >= 4.5),
-      "Highlighted text must meet normal-text contrast",
-    );
-  }));
+});
 
 test("Open Regard preferences sync between site pages and the demo inspector", async () => {
   const context = await browser.newContext();
