@@ -124,3 +124,16 @@ and demo interactions under `/web-network-inspector/`.
 
 GitHub Pages deploys the inspector repository's own artifact on successful
 main-branch builds. The organization site supplies the shared domain.
+
+## React and capture filters
+
+An optional React 18+ component is available from `web-network-inspector/react`.
+The core module never imports React, and React is an optional peer dependency.
+See the [React guide](docs/react.md) for refs, lifecycle, and styling.
+
+Pass a synchronous `filter` to `createInspector`, or configure it on a shared
+`NetworkCapture`. Factories include `byHostnames`, `byOrigins`, `byMethods`,
+`allOf`, `anyOf`, and `not`. See the [filtering guide](docs/filtering.md).
+
+The demo also connects to Postman’s public WebSocket echo service after you
+click Connect, then captures sent and echoed messages as separate frames.

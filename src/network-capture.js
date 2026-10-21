@@ -92,7 +92,10 @@ export function previewText(preview) {
 }
 
 export class NetworkCapture {
-  constructor({ now = () => performance.now(), limits = {} } = {}) {
+  constructor({ now = () => performance.now(), limits = {}, filter } = {}) {
+    if (filter !== undefined && typeof filter !== "function")
+      throw new TypeError("filter must be a function.");
+    Object.defineProperty(this, "filter", { value: filter, enumerable: true });
     this.now = now;
     this.limits = { ...captureLimits };
     this.entries = [];
@@ -194,6 +197,34 @@ export class NetworkCapture {
   }
   add(data) {
     if (this.paused) return null;
+    if (this.filter && data.kind !== "event") {
+      let url;
+      try {
+        url = new URL(data.url);
+      } catch {
+        /* Metadata may have no valid URL. */
+      }
+      const metadata = Object.freeze({
+        kind: data.kind,
+        transport:
+          data.transport ??
+          (["socket", "message"].includes(data.kind) ? "WebSocket" : null),
+        method: data.method ?? null,
+        url: data.url ?? null,
+        hostname: url?.hostname ?? null,
+        origin: url?.origin ?? null,
+        protocol: url?.protocol ?? null,
+        direction: data.direction ?? null,
+      });
+      try {
+        const accepted = this.filter(metadata);
+        if (accepted && typeof accepted.then === "function")
+          void Promise.resolve(accepted).catch(() => {});
+        if (accepted !== true) return null;
+      } catch {
+        return null;
+      }
+    }
     const entry = {
       id: ++this.serial,
       start: this.now(),
@@ -394,7 +425,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
       );
   }
   function responsePreview(entry, response) {
-    if (!response.body || !store.has(entry) || store.paused) return;
+    if (!store.has(entry) || store.paused || !response.body) return;
     if (readers >= store.limits.readers) {
       store.preview(entry, "responseBody", {
         ...bodyPreview(null),
@@ -528,6 +559,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
         safe(() => store.update(entry, { networkStart: store.now() }));
         const response = await originalFetch.call(this, input, init);
         safe(() => {
+          if (!store.has(entry)) return;
           store.update(entry, {
             status: response.status,
             headersAt: store.now(),
@@ -605,6 +637,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
                 status: socket.readyState === 1 ? "Open" : "Closed",
                 note: "Connection already existed when this capture began.",
               });
+            if (!state.connection) return;
             const entry = store.add({
               kind: "message",
               connection: state.connection?.id,
@@ -670,6 +703,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
         });
         const complete = () =>
           safe(() => {
+            if (!store.has(entry)) return;
             store.update(entry, {
               status: this.status || "Failed",
               end: store.now(),

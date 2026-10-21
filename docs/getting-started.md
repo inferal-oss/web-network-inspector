@@ -65,7 +65,7 @@ const connection = inspector.addBarItem({
 connection.update({ label: "Connection · reconnecting" });
 ```
 
-Pass a DOM element to `addBarItem` for a native select, status indicator, or another custom control. Popup content may also be a DOM element or a renderer with a cleanup function. See the [API reference](./api/) for the complete contracts.
+Pass a DOM element to `addBarItem` for a native select, status indicator, or another custom control. Popup content may also be a DOM element or a renderer with a cleanup function. See the [API reference](api.md) for the complete contracts.
 
 ## Inspect without losing your place
 

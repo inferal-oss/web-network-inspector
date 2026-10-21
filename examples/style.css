@@ -229,3 +229,37 @@ select {
     padding-bottom: 70vh;
   }
 }
+.socket-card {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+.socket-card p:not(.result) {
+  color: #65738b;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+.socket-card a {
+  color: #2457b8;
+}
+.socket-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.socket-actions button {
+  padding: 8px 11px;
+  gap: 8px;
+}
+.socket-card input {
+  font-family: ui-monospace, monospace;
+}
+@media (max-width: 800px) {
+  .socket-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}

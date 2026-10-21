@@ -202,7 +202,7 @@
               role="tabpanel"
               aria-labelledby="tab-events"
             >
-              <pre><code>inspector.recordEvent({
+              <pre><code class="language-javascript">inspector.recordEvent({
   type: 'document.saved',
   label: 'Saved a draft',
   correlationId: 'example-document',
@@ -215,7 +215,7 @@
               aria-labelledby="tab-controls"
               hidden
             >
-              <pre><code>const status = document.createElement('span');
+              <pre><code class="language-javascript">const status = document.createElement('span');
 status.textContent = 'Ready';
 
 inspector.addBarItem({
@@ -229,7 +229,7 @@ inspector.addBarItem({
               aria-labelledby="tab-popups"
               hidden
             >
-              <pre><code>inspector.openPopup({
+              <pre><code class="language-javascript">inspector.openPopup({
   title: 'Connection details',
   anchor: connectionButton,
   content: ({ container }) =&gt; {

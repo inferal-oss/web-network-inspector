@@ -1,5 +1,7 @@
 # Public API
 
+The [React component](react.md) wraps this API with React mounting and cleanup.
+
 ## `createInspector(options)`
 
 Import from `web-network-inspector` or the source's `src/index.js`.
@@ -8,6 +10,7 @@ Import from `web-network-inspector` or the source's `src/index.js`.
 | ------------ | ------------------------------- | ------------------------------------------------------------------------------------------ |
 | `scope`      | `window`                        | Browser window whose transports are captured.                                              |
 | `container`  | `scope.document.body`           | DOM container for the host element.                                                        |
+| `filter`     | unset                           | Synchronous predicate for an instance-owned store. See [capture filters](filtering.md).    |
 | `store`      | `new NetworkCapture()`          | Retained history shared with this view.                                                    |
 | `capture`    | `true`                          | Install transport wrappers. Set false for manual events or another view of a shared store. |
 | `open`       | `false`                         | Start with the waterfall expanded.                                                         |
@@ -131,9 +134,10 @@ const off = store.subscribe(() => console.log(store.entries.length));
 // off(); capture.disconnect(); store.clear();
 ```
 
-`NetworkCapture({ now, limits })` accepts a monotonic millisecond clock (`now`)
+`NetworkCapture({ now, limits, filter })` accepts a monotonic millisecond clock (`now`)
 and initial limits. For browser resource timings use the scope's performance
-time origin. `installNetworkCapture(scope, store?)` returns `store`,
+time origin. Its optional `filter` chooses which network entries are retained;
+see [capture filters](filtering.md). `installNetworkCapture(scope, store?)` returns `store`,
 `annotateMessage`, and idempotent `disconnect()`.
 
 | Limit                           | Default | Maximum    |

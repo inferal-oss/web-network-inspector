@@ -14,12 +14,18 @@ export {
 export function createInspector({
   scope = globalThis.window,
   container = scope?.document.body,
-  store = new NetworkCapture(),
+  store,
+  filter,
   capture = true,
   open = false,
   stylesheet = new URL("./style.css", import.meta.url).href,
   nonce,
 } = {}) {
+  if (store && filter !== undefined)
+    throw new TypeError(
+      "Set filter on a shared NetworkCapture instead of on the view.",
+    );
+  store ??= new NetworkCapture({ filter });
   if (!container?.append) throw new TypeError("A DOM container is required.");
   const document = container.ownerDocument;
   const transport = capture ? installNetworkCapture(scope, store) : null;
@@ -223,3 +229,12 @@ export function createInspector({
   ui.setOpen(!!open);
   return api;
 }
+
+export {
+  byHostnames,
+  byOrigins,
+  byMethods,
+  allOf,
+  anyOf,
+  not,
+} from "./filters.js";

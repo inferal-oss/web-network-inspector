@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
 import { parseHTML } from "linkedom";
+import { highlightHTML } from "./highlight.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const escape = (value) =>
@@ -61,12 +62,14 @@ export async function buildSite({
     .replaceAll("{{VERSION}}", escape(pkg.version))
     .replace("{{HEADER}}", header("overview"))
     .replace("{{FOOTER}}", footer);
-  await writeFile(resolve(output, "index.html"), landing);
+  await writeFile(resolve(output, "index.html"), highlightHTML(landing));
   await writeFile(resolve(output, ".nojekyll"), "");
   const pages = [
     ["Getting started", "docs/", "docs/getting-started.md"],
     ["API reference", "docs/api/", "docs/api.md"],
     ["Styling guide", "docs/styling/", "docs/styling.md"],
+    ["React component", "docs/react/", "docs/react.md"],
+    ["Capture filters", "docs/filtering/", "docs/filtering.md"],
   ];
   for (const [title, path, source] of pages) {
     const html = await marked.parse(
@@ -75,6 +78,22 @@ export async function buildSite({
     const { document } = parseHTML(
       `<html><body><article>${html}</article></body></html>`,
     );
+    // Keep Markdown links useful in the source repository and the hosted guides.
+    for (const link of document.querySelectorAll("a[href]")) {
+      const href = link.getAttribute("href");
+      const target = pages.find(
+        ([, , file]) => file === "docs/" + href?.split("#")[0],
+      );
+      if (target)
+        link.setAttribute(
+          "href",
+          basePath +
+            target[1] +
+            (href.includes("#")
+              ? "#" + href.split("#").slice(1).join("#")
+              : ""),
+        );
+    }
     const used = new Map(),
       toc = [];
     for (const heading of document.querySelectorAll("h2,h3")) {
@@ -94,7 +113,7 @@ export async function buildSite({
           `<a href="${basePath}${href}"${href === path ? ' aria-current="page"' : ""}>${name}</a>`,
       )
       .join("");
-    const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} · Web Network Inspector</title><meta name="description" content="${escape(title)} for Web Network Inspector: a small, extensible in-page network waterfall."><link rel="icon" href="${basePath}assets/wni-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="${basePath}assets/site.css"><script type="module" src="${basePath}assets/site.js"></script></head><body>${header("docs")}<main id="main" class="wrap docs-shell"><aside class="docs-sidebar"><span class="tiny-caps">DOCUMENTATION</span><nav aria-label="Documentation">${links}<a href="${basePath}demo/">Live demo ↗</a></nav></aside><article class="doc-content"><div class="doc-breadcrumb">WEB NETWORK INSPECTOR / DOCS</div>${document.querySelector("article").innerHTML}</article><aside class="doc-toc"><span class="tiny-caps">ON THIS PAGE</span><nav aria-label="On this page">${toc.join("")}</nav></aside></main>${footer}</body></html>`;
+    const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} · Web Network Inspector</title><meta name="description" content="${escape(title)} for Web Network Inspector: a small, extensible in-page network waterfall."><link rel="icon" href="${basePath}assets/wni-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="${basePath}assets/site.css"><script type="module" src="${basePath}assets/site.js"></script></head><body>${header("docs")}<main id="main" class="wrap docs-shell"><aside class="docs-sidebar"><span class="tiny-caps">DOCUMENTATION</span><nav aria-label="Documentation">${links}<a href="${basePath}demo/">Live demo ↗</a></nav></aside><article class="doc-content"><div class="doc-breadcrumb">WEB NETWORK INSPECTOR / DOCS</div>${highlightHTML(document.querySelector("article").innerHTML)}</article><aside class="doc-toc"><span class="tiny-caps">ON THIS PAGE</span><nav aria-label="On this page">${toc.join("")}</nav></aside></main>${footer}</body></html>`;
     await mkdir(resolve(output, path), { recursive: true });
     await writeFile(resolve(output, path, "index.html"), page);
   }

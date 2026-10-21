@@ -33,6 +33,9 @@ try {
       }),
     }),
   );
+  await page.routeWebSocket("wss://ws.postman-echo.com/raw", (socket) =>
+    socket.onMessage((message) => socket.send(message)),
+  );
   await page.goto(`http://127.0.0.1:${server.address().port}`);
   await page.getByRole("button", { name: "Clear", exact: true }).click();
   await page
@@ -56,6 +59,19 @@ try {
     .click();
   await page.getByRole("button", { name: /Published a preview/ }).click();
   await page.locator("#network-detail .network-json-tree").waitFor();
+  await page
+    .getByRole("button", { name: "Connect WebSocket", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Send message", exact: true }).click();
+  await page.waitForFunction(() =>
+    window.inspector.store.entries.some(
+      (entry) => entry.label === "Echoed WebSocket message",
+    ),
+  );
+  await page.getByRole("button", { name: /Jump to latest/ }).click();
+  await page.getByRole("button", { name: /Echoed WebSocket message/ }).click();
+  await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: resolve(output, "demo.png") });
   await page.getByRole("button", { name: "Connection · ready" }).click();
   await page.getByRole("dialog").waitFor();

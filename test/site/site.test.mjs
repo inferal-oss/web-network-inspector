@@ -64,7 +64,15 @@ async function pageAt(path, run) {
   }
 }
 test("all site pages and local assets resolve beneath the project prefix", async () => {
-  for (const path of ["", "docs/", "docs/api/", "docs/styling/", "demo/"]) {
+  for (const path of [
+    "",
+    "docs/",
+    "docs/api/",
+    "docs/styling/",
+    "docs/react/",
+    "docs/filtering/",
+    "demo/",
+  ]) {
     const file = resolve(output, path, "index.html");
     const { document } = parseHTML(await readFile(file, "utf8"));
     for (const node of document.querySelectorAll(
@@ -179,7 +187,14 @@ test("httpbin failures visibly fall back to bundled data without a server endpoi
     );
   }));
 test("landing, docs, and demo fit a narrow viewport", async () => {
-  for (const path of ["", "docs/api/", "docs/styling/", "demo/"])
+  for (const path of [
+    "",
+    "docs/api/",
+    "docs/styling/",
+    "docs/react/",
+    "docs/filtering/",
+    "demo/",
+  ])
     await pageAt(path, async (page) => {
       await page.setViewportSize({ width: 390, height: 844 });
       assert.equal(
@@ -190,3 +205,120 @@ test("landing, docs, and demo fit a narrow viewport", async () => {
       );
     });
 });
+
+test("code blocks are highlighted at build time without changing copy text", () =>
+  pageAt("docs/react/", async (page) => {
+    assert.ok((await page.locator("pre code.hljs .hljs-keyword").count()) > 0);
+    assert.match(
+      await page.locator("pre code").first().textContent(),
+      /import \{ NetworkInspector \}/,
+    );
+    assert.equal(await page.locator("script[src*=highlight]").count(), 0);
+    await page
+      .getByRole("navigation", { name: "Documentation", exact: true })
+      .getByRole("link", { name: "Capture filters", exact: true })
+      .click();
+    assert.match(
+      await page.locator(".doc-content").textContent(),
+      /byHostnames/,
+    );
+    assert.ok((await page.locator("pre code.hljs .hljs-string").count()) > 0);
+  }));
+test("demo sends and receives WebSocket frames and disconnects cleanly", () =>
+  pageAt("demo/", async (page) => {
+    await page.routeWebSocket("wss://ws.postman-echo.com/raw", (socket) =>
+      socket.onMessage((message) => socket.send(message)),
+    );
+    await page
+      .getByRole("button", { name: "Connect WebSocket", exact: true })
+      .click();
+    await page.waitForFunction(() =>
+      document
+        .getElementById("socket-result")
+        .textContent.startsWith("Connected"),
+    );
+    await page
+      .getByLabel("WebSocket message", { exact: true })
+      .fill('{"message":"Echo from the demo"}');
+    await page
+      .getByRole("button", { name: "Send message", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: /Echoed WebSocket message/ })
+      .click();
+    assert.match(
+      await page.locator("#network-detail").textContent(),
+      /Echo from the demo/,
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.inspector.store.entries.filter((e) => e.kind === "message")
+            .length,
+      ),
+      2,
+    );
+    await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+    await page.waitForFunction(() =>
+      document
+        .getElementById("socket-result")
+        .textContent.startsWith("Disconnected"),
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .isDisabled(),
+      true,
+    );
+  }));
+test("demo shows an unavailable WebSocket service and permits retry", () =>
+  pageAt("demo/", async (page) => {
+    await page.context().setOffline(true);
+    await page
+      .getByRole("button", { name: "Connect WebSocket", exact: true })
+      .click();
+    await page.waitForFunction(
+      () => !document.getElementById("socket-connect").disabled,
+    );
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .isDisabled(),
+      true,
+    );
+    assert.match(
+      await page.locator("#socket-result").textContent(),
+      /Disconnected|unavailable/,
+    );
+  }));
+
+test("syntax colors remain readable on documentation code surfaces", () =>
+  pageAt("docs/react/", async (page) => {
+    const contrast = await page.evaluate(() => {
+      const luminance = (color) => {
+        const values = color
+          .match(/[\d.]+/g)
+          .slice(0, 3)
+          .map(Number)
+          .map((v) => v / 255)
+          .map((v) =>
+            v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4,
+          );
+        return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+      };
+      return [...document.querySelectorAll("pre code.hljs span")].map(
+        (token) => {
+          const a = luminance(getComputedStyle(token).color),
+            b = luminance(
+              getComputedStyle(token.closest("pre")).backgroundColor,
+            );
+          return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        },
+      );
+    });
+    assert.ok(contrast.length > 0);
+    assert.ok(
+      contrast.every((ratio) => ratio >= 4.5),
+      "Highlighted text must meet normal-text contrast",
+    );
+  }));

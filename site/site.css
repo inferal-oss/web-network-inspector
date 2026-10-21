@@ -942,3 +942,35 @@ h1 span {
     scroll-behavior: auto;
   }
 }
+
+/* Build-time syntax tokens on the dark code surfaces. */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in {
+  color: #d7b4ff;
+}
+.hljs-string,
+.hljs-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  color: #a6dec6;
+}
+.hljs-number,
+.hljs-literal,
+.hljs-symbol {
+  color: #ffc698;
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-property,
+.hljs-attribute {
+  color: #9bcaff;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #a1b1c7;
+  font-style: italic;
+}
+.hljs-tag {
+  color: #f3acc7;
+}

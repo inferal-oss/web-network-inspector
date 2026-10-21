@@ -63,6 +63,35 @@
             Your label and payload, captured together.
           </p>
         </section>
+        <section class="card socket-card" aria-labelledby="socket-title">
+          <div>
+            <span class="step">03 / WEBSOCKET FRAMES</span>
+            <h2 id="socket-title">Send it. See it come back.</h2>
+            <p>
+              Connect to
+              <a href="https://learning.postman.com/docs/developer/echo-api"
+                >Postman’s public echo service</a
+              >. Messages you send are echoed back and captured as individual
+              frames.
+            </p>
+          </div>
+          <div class="socket-controls">
+            <label
+              >WebSocket message<input
+                id="socket-message"
+                value='{"message":"Hello from the demo"}'
+                maxlength="2000"
+            /></label>
+            <div class="socket-actions">
+              <button id="socket-connect">Connect WebSocket</button
+              ><button id="socket-send" disabled>Send message</button
+              ><button id="socket-disconnect" disabled>Disconnect</button>
+            </div>
+            <p id="socket-result" class="result" role="status">
+              Disconnected · wss://ws.postman-echo.com/raw
+            </p>
+          </div>
+        </section>
       </div>
       <div class="extension-note">
         <span class="extension-symbol" aria-hidden="true">↙</span>

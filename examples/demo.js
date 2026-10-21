@@ -150,3 +150,102 @@ document.getElementById("event").addEventListener("click", () => {
 });
 // Explicitly expose this demo instance for the browser examples and tests.
 window.inspector = inspector;
+
+// A public echo endpoint: only connect or transmit after an explicit user action.
+const socketResult = document.getElementById("socket-result");
+const socketConnect = document.getElementById("socket-connect");
+const socketSend = document.getElementById("socket-send");
+const socketDisconnect = document.getElementById("socket-disconnect");
+let demoSocket = null;
+let socketTimer;
+socketConnect.addEventListener("click", () => {
+  socketConnect.disabled = true;
+  socketDisconnect.disabled = false;
+  socketResult.textContent = "Connecting to Postman echo…";
+  inspector.recordEvent({
+    type: "socket.connect.clicked",
+    label: "Connect WebSocket",
+    parentId: null,
+  });
+  let socket;
+  try {
+    socket = new WebSocket("wss://ws.postman-echo.com/raw");
+  } catch {
+    socketResult.textContent =
+      "The public echo service is unavailable. Try connecting again.";
+    socketConnect.disabled = false;
+    socketDisconnect.disabled = true;
+    return;
+  }
+  demoSocket = socket;
+  let failed = false;
+  const current = () => demoSocket === socket;
+  socketTimer = setTimeout(() => {
+    if (!current() || socket.readyState !== WebSocket.CONNECTING) return;
+    failed = true;
+    socketResult.textContent =
+      "The public echo service timed out. Try connecting again.";
+    socket.close();
+  }, 10000);
+  socket.addEventListener("open", () => {
+    if (!current()) return;
+    clearTimeout(socketTimer);
+    socketSend.disabled = false;
+    socketResult.textContent =
+      "Connected · send a sample message to see both frames.";
+  });
+  socket.addEventListener("message", (event) => {
+    if (!current()) return;
+    inspector.annotateMessage(socket, "in", {
+      type: "demo.echo",
+      label: "Echoed WebSocket message",
+      correlationId: "demo-echo",
+    });
+    socketResult.textContent = `Echo received · ${String(event.data).length} characters · inspect the received frame below.`;
+  });
+  socket.addEventListener("error", () => {
+    if (!current()) return;
+    failed = true;
+    socketResult.textContent =
+      "The public echo service is unavailable. Try connecting again.";
+  });
+  socket.addEventListener("close", () => {
+    if (!current()) return;
+    clearTimeout(socketTimer);
+    demoSocket = null;
+    socketConnect.disabled = false;
+    socketSend.disabled = true;
+    socketDisconnect.disabled = true;
+    if (!failed)
+      socketResult.textContent =
+        "Disconnected · connect again to start another exchange.";
+  });
+});
+socketSend.addEventListener("click", () => {
+  if (!demoSocket || demoSocket.readyState !== WebSocket.OPEN) return;
+  try {
+    demoSocket.send(document.getElementById("socket-message").value);
+    inspector.annotateMessage(demoSocket, "out", {
+      type: "demo.echo",
+      label: "Sent WebSocket message",
+      correlationId: "demo-echo",
+    });
+    socketResult.textContent = "Message sent · waiting for its echo…";
+  } catch {
+    socketResult.textContent =
+      "Message could not be sent. Disconnect and try again.";
+  }
+});
+socketDisconnect.addEventListener("click", () => {
+  clearTimeout(socketTimer);
+  socketSend.disabled = true;
+  demoSocket?.close(1000, "Demo complete");
+});
+window.addEventListener(
+  "pagehide",
+  () => {
+    clearTimeout(socketTimer);
+    demoSocket?.close(1000, "Page closed");
+  },
+  { once: true },
+);
