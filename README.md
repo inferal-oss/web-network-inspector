@@ -141,3 +141,5 @@ The demo also connects to Postman’s public WebSocket echo service after you
 click Connect, then captures sent and echoed messages as separate frames.
 
 [Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)
+
+The public site and demo use synchronized [Open Regard display preferences](docs/display.md). This integration adds no runtime dependency to the inspector package.

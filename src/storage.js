@@ -134,6 +134,8 @@ export async function createPersistentCapture({
             data[key] = start + original[key] - original.start;
         data.start = start;
         data.restored = true;
+        if (data.resourcePreviewStatus === "Loading")
+          data.resourcePreviewStatus = "Interrupted by page reload";
         if (["http", "socket"].includes(data.kind) && data.end == null) {
           data.end = start;
           data.status = "Interrupted by page reload";

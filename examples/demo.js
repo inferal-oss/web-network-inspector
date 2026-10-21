@@ -4,7 +4,15 @@ const store = await createPersistentCapture({
     database: "web-network-inspector-demo",
   }),
 });
-const inspector = createInspector({ store, open: true });
+const inspector = createInspector({
+  store,
+  open: true,
+  resourcePreviews: "on-select",
+  renderDetails(context) {
+    context.renderDefault();
+    syncDetailsDisplay(context.document);
+  },
+});
 window.addEventListener("pagehide", () => {
   void store.persistence.flush().catch(() => {});
 });
@@ -40,7 +48,7 @@ environmentSelect.addEventListener("change", () => {
 const counter = document.createElement("span");
 counter.setAttribute("aria-live", "polite");
 counter.style.cssText =
-  "border:1px solid #cdd9ee;border-radius:20px;padding:4px 9px;color:#2456ac;background:#edf3ff;font:10px ui-monospace,monospace;white-space:nowrap";
+  "border:1px solid #cdd9ee;border-radius:20px;padding:4px 9px;color:#2456ac;background:#edf3ff;font:var(--text-10) ui-monospace,monospace;white-space:nowrap";
 inspector.addBarItem({ id: "event-count", element: counter });
 const updateCounter = () => {
   const events = inspector.store.entries.filter(
@@ -64,7 +72,7 @@ inspector.addBarItem({
         const badge = document.createElement("p");
         badge.textContent = "● CONNECTED · LOCAL EXAMPLE";
         badge.style.cssText =
-          "color:#21715e;font:600 10px ui-monospace,monospace;letter-spacing:.06em";
+          "color:#21715e;font:600 var(--text-10) ui-monospace,monospace;letter-spacing:.06em";
         const text = document.createElement("p");
         text.textContent = `Environment: ${environment}. This popup is supplied by the application, using the inspector's public extension API.`;
         text.style.cssText = "color:#65738b;line-height:1.7";
@@ -257,3 +265,92 @@ window.addEventListener(
   },
   { once: true },
 );
+
+// The same Open Regard controller powers the site header and this custom bar item.
+if (window.inferalDisplay && window.mountInferalDisplay) {
+  for (const file of ["widget.css", "display.css"]) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = new URL(`./display/${file}`, import.meta.url).href;
+    inspector.root.append(link);
+  }
+  const display = window.inferalDisplay;
+  const container = document.createElement("div");
+  inspector.addBarItem({ id: "openregard-display", element: container });
+  const widget = window.mountInferalDisplay(container);
+  let previous = display.getSnapshot();
+  function apply() {
+    const profile = display.getSnapshot();
+    const scale = profile === "standard" ? 1 : 1.25;
+    for (const size of [10, 11, 12, 13, 14, 21, 22])
+      inspector.host.style.setProperty(`--text-${size}`, `${size * scale}px`);
+    for (const [key, value] of Object.entries(
+      profile === "clarity" || profile === "contrast"
+        ? {
+            "--panel": "#fff",
+            "--paper": "#f5f7fa",
+            "--ink": profile === "contrast" ? "#000" : "#101a2b",
+            "--muted": "#222",
+            "--line": "#6b7280",
+            "--brand": "#0645ad",
+            "--brand-dark": "#003584",
+            "--brand-soft": "#e5eeff",
+          }
+        : {},
+    ))
+      inspector.host.style.setProperty(key, value);
+    if (profile === "standard" || profile === "vision")
+      for (const key of [
+        "--panel",
+        "--paper",
+        "--ink",
+        "--muted",
+        "--line",
+        "--brand",
+        "--brand-dark",
+        "--brand-soft",
+      ])
+        inspector.host.style.removeProperty(key);
+    const frame = inspector.root.querySelector(".network-detail-frame");
+    if (frame?.contentDocument?.documentElement)
+      syncDetailsDisplay(frame.contentDocument);
+    if (profile !== previous) {
+      inspector.recordEvent({
+        type: "display.changed",
+        label: `Display · ${display.config.profiles.find((p) => p.id === profile).label}`,
+        data: JSON.stringify({ profile, previous, source: "openregard" }),
+        parentId: null,
+      });
+      previous = profile;
+    }
+  }
+  const off = display.subscribe(apply);
+  apply();
+  window.addEventListener(
+    "pagehide",
+    () => {
+      off();
+      widget.destroy();
+    },
+    { once: true },
+  );
+}
+
+function syncDetailsDisplay(document) {
+  const style = getComputedStyle(inspector.host);
+  for (const key of [
+    "--panel",
+    "--paper",
+    "--ink",
+    "--muted",
+    "--line",
+    "--brand",
+    "--brand-dark",
+    "--brand-soft",
+    ...[10, 11, 12, 13, 14, 21, 22].map((size) => `--text-${size}`),
+  ])
+    document.documentElement.style.setProperty(
+      key,
+      style.getPropertyValue(key),
+    );
+}

@@ -20,8 +20,11 @@ export function createInspector({
   open = false,
   stylesheet = new URL("./style.css", import.meta.url).href,
   nonce,
+  resourcePreviews = "manual",
   renderDetails,
 } = {}) {
+  if (!["manual", "on-select"].includes(resourcePreviews))
+    throw new TypeError("resourcePreviews must be manual or on-select.");
   if (renderDetails !== undefined && typeof renderDetails !== "function")
     throw new TypeError("renderDetails must be a function.");
   if (store && filter !== undefined)
@@ -45,6 +48,7 @@ export function createInspector({
   container.append(host);
   const ui = setupNetworkActivity(root, scope, store, {
     renderDetails,
+    resourcePreviews,
     loadResource: transport?.loadResource,
   });
   const items = new Map();

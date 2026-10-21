@@ -73,6 +73,7 @@ test("all site pages and local assets resolve beneath the project prefix", async
     "docs/filtering/",
     "docs/details/",
     "docs/storage/",
+    "docs/display/",
     "demo/",
   ]) {
     const file = resolve(output, path, "index.html");
@@ -336,3 +337,90 @@ test("syntax colors remain readable on documentation code surfaces", () =>
       "Highlighted text must meet normal-text contrast",
     );
   }));
+
+test("Open Regard preferences sync between site pages and the demo inspector", async () => {
+  const context = await browser.newContext();
+  const home = await context.newPage();
+  const docs = await context.newPage();
+  const demo = await context.newPage();
+  try {
+    await home.goto(origin + base);
+    await home.getByLabel("Display preferences").selectOption("vision");
+    await docs.goto(origin + base + "docs/");
+    assert.equal(
+      await docs.locator("html").getAttribute("data-regard-profile"),
+      "vision",
+    );
+    assert.equal(
+      await docs.getByLabel("Display preferences").inputValue(),
+      "vision",
+    );
+    assert.equal(
+      await docs
+        .locator("html")
+        .evaluate((node) => getComputedStyle(node).fontSize),
+      "20px",
+    );
+    await demo.goto(origin + base + "demo/");
+    await demo.getByLabel("Display preferences").selectOption("contrast");
+    await home.waitForFunction(
+      () => document.documentElement.dataset.regardProfile === "contrast",
+    );
+    await docs.waitForFunction(
+      () => document.documentElement.dataset.regardProfile === "contrast",
+    );
+    assert.equal(
+      await home.getByLabel("Display preferences").inputValue(),
+      "contrast",
+    );
+    await demo.getByRole("button", { name: /Display · Contrast/ }).click();
+    const detail = demo.frameLocator(".network-detail-frame");
+    assert.match(await detail.locator("body").textContent(), /openregard/);
+    assert.equal(
+      await detail
+        .locator("body")
+        .evaluate((node) => getComputedStyle(node).fontSize),
+      "15px",
+    );
+    await demo.reload();
+    assert.equal(
+      await demo.getByLabel("Display preferences").inputValue(),
+      "contrast",
+    );
+    for (const page of [home, docs, demo]) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+        page.url() +
+          JSON.stringify(
+            await page.evaluate(() =>
+              Array.from(document.querySelectorAll("body *"))
+                .filter((n) => n.getBoundingClientRect().right > innerWidth + 1)
+                .slice(0, 12)
+                .map((n) => [
+                  n.tagName,
+                  n.className,
+                  n.getBoundingClientRect().right,
+                ]),
+            ),
+          ),
+      );
+    }
+  } finally {
+    await context.close();
+  }
+});
+
+test("demo uses a versioned runtime so cached releases cannot mix scripts", async () => {
+  const { document } = parseHTML(
+    await readFile(resolve(output, "demo/index.html"), "utf8"),
+  );
+  const script = document.querySelector('script[type="module"]');
+  assert.match(script.getAttribute("src"), /demo\.js\?v=[a-f0-9]{12}/);
+  const source = await readFile(resolve(output, "demo/demo.js"), "utf8");
+  assert.match(source, /\.\.\/runtime-[a-f0-9]{12}\/index.js/);
+  assert.doesNotMatch(source, /\.\.\/src\//);
+});

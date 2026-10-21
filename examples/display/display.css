@@ -1,0 +1,41 @@
+html[data-regard-profile] {
+  font-size: var(--regard-font-size, 100%);
+  color: var(--ink, #192640);
+  background: var(--page, #fbfcfe);
+}
+html[data-regard-profile]:not([data-regard-profile="standard"]) body {
+  line-height: var(--regard-line-height, 1.6);
+  letter-spacing: var(--regard-letter-spacing, normal);
+  word-spacing: var(--regard-word-spacing, normal);
+}
+.inferal-display {
+  font:
+    0.75rem/1.4 system-ui,
+    sans-serif;
+  min-width: 0;
+  --openregard-control-padding: 0.3em 0.5em;
+  --openregard-control-radius: 6px;
+}
+.inferal-display .openregard-description {
+  display: none;
+}
+.inferal-display .openregard-select {
+  min-block-size: 2.2em;
+}
+.header-nav,
+.demo-site-nav,
+header.wrap {
+  flex-wrap: wrap;
+}
+html[data-regard-profile="clarity"] :where(p, li, label),
+html[data-regard-profile="contrast"] :where(p, li, label) {
+  color: var(--ink, #000);
+}
+html[data-regard-profile="contrast"] a:not(.button) {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+html[data-regard-profile="contrast"]
+  :where(.project, .interaction-card, .feature, .code-card) {
+  border-color: #555;
+}

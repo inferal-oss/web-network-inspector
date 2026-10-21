@@ -69,12 +69,13 @@ export function Example() {
 | `store`               | Optional shared `NetworkCapture`. Configure its filter on the store.                                                              |
 | `filter`              | Predicate for an instance-owned store; do not combine with `store`.                                                               |
 | `stylesheet`, `nonce` | Same stylesheet options as `createInspector`.                                                                                     |
+| `resourcePreviews`    | `"manual"` or `"on-select"`, as in `createInspector`.                                                                             |
 | `renderDetails`       | Custom details renderer; receives the iframe context described in [request details](details.md).                                  |
 | `onReady`             | Receives the created inspector; may return cleanup.                                                                               |
 | `ref`                 | Object or stable callback ref receiving the inspector API.                                                                        |
 | Other props           | Passed to the outer `div`, including `className`, `style`, `id`, and accessible attributes.                                       |
 
-Changes to `scope`, `store`, `filter`, `capture`, `stylesheet`, `nonce`, `renderDetails`, or the ref identity destroy and recreate the instance. A recreated instance with no external store starts with a fresh history. Changing ordinary container props, `onReady`, or `open` does not recreate capture. Memoize functions and stores so normal parent renders do not reset it:
+Changes to `scope`, `store`, `filter`, `capture`, `stylesheet`, `nonce`, `resourcePreviews`, `renderDetails`, or the ref identity destroy and recreate the instance. A recreated instance with no external store starts with a fresh history. Changing ordinary container props, `onReady`, or `open` does not recreate capture. Memoize functions and stores so normal parent renders do not reset it:
 
 ```jsx
 import { useMemo } from "react";

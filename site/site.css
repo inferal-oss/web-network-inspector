@@ -82,7 +82,7 @@ summary:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 11px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 730;
   letter-spacing: -0.03em;
 }
@@ -94,7 +94,7 @@ summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 28px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 550;
   color: var(--muted);
 }
@@ -119,7 +119,7 @@ summary:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
-  font: 600 10px/1.5 var(--mono);
+  font: 600 0.625rem/1.5 var(--mono);
   letter-spacing: 0.12em;
   color: var(--blue);
   margin: 0 0 23px;
@@ -132,7 +132,7 @@ summary:focus-visible {
   box-shadow: 0 0 0 4px #e3ecff;
 }
 h1 {
-  font-size: clamp(50px, 5.1vw, 76px);
+  font-size: clamp(3.125rem, 5.1vw, 4.75rem);
   line-height: 1.015;
   letter-spacing: -0.065em;
   margin: 0 0 24px;
@@ -143,10 +143,16 @@ h1 span {
 }
 .hero-description {
   max-width: 480px;
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.8;
   color: var(--muted);
   margin: 0 0 28px;
+}
+.hero-copy {
+  min-width: 0;
+}
+.hero-copy h1 {
+  overflow-wrap: anywhere;
 }
 .hero-actions {
   display: flex;
@@ -162,7 +168,7 @@ h1 span {
   padding: 13px 19px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -189,7 +195,7 @@ h1 span {
   max-width: 525px;
 }
 .install-command code {
-  font: 10px var(--mono);
+  font: 0.625rem var(--mono);
   overflow: auto;
   white-space: nowrap;
   flex: 1;
@@ -199,11 +205,11 @@ h1 span {
   border: 0;
   background: none;
   color: var(--blue);
-  font-size: 10px;
+  font-size: 0.625rem;
   padding: 4px;
 }
 .install-note {
-  font-size: 10px;
+  font-size: 0.625rem;
   color: #8190a7;
   line-height: 1.7;
   margin: 9px 0 0;
@@ -221,12 +227,12 @@ h1 span {
   gap: 10px;
 }
 .tiny-caps {
-  font: 9px var(--mono);
+  font: 0.5625rem var(--mono);
   letter-spacing: 0.08em;
   color: #7386a3;
 }
 .version {
-  font: 10px var(--mono);
+  font: 0.625rem var(--mono);
   padding: 4px 7px;
   background: #eaf1ff;
   border: 1px solid #d4e3ff;
@@ -252,7 +258,7 @@ h1 span {
   position: relative;
 }
 .sketch-label {
-  font: 8px var(--mono);
+  font: 0.5rem var(--mono);
   letter-spacing: 0.07em;
   position: absolute;
   top: 2px;
@@ -289,7 +295,7 @@ h1 span {
   position: absolute;
   bottom: 4px;
   left: 0;
-  font-size: 20px;
+  font-size: 1.25rem;
   letter-spacing: -0.035em;
   line-height: 1.35;
   font-weight: 550;
@@ -300,7 +306,7 @@ h1 span {
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 20px;
-  font: 9px/1.6 var(--mono);
+  font: 0.5625rem/1.6 var(--mono);
   color: #7b8da6;
 }
 .hero-facts span + span::before {
@@ -315,13 +321,13 @@ h1 span {
   margin-bottom: 17px;
 }
 .section-label h2 {
-  font-size: 17px;
+  font-size: 1.0625rem;
   letter-spacing: -0.03em;
   margin: 0;
 }
 .section-label a {
   color: var(--blue);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .preview-window {
   border: 1px solid #d2def1;
@@ -336,7 +342,7 @@ h1 span {
   gap: 14px;
   padding: 12px 15px;
   border-bottom: 1px solid var(--line);
-  font: 9px var(--mono);
+  font: 0.5625rem var(--mono);
   color: #8191ab;
 }
 .window-dots {
@@ -345,7 +351,7 @@ h1 span {
 }
 .preview-badge {
   margin-left: auto;
-  font-size: 8px;
+  font-size: 0.5rem;
   letter-spacing: 0.08em;
 }
 .preview-image {
@@ -361,7 +367,7 @@ h1 span {
   object-position: bottom;
 }
 .figure-note {
-  font: 10px/1.8 var(--mono);
+  font: 0.625rem/1.8 var(--mono);
   color: #8998b0;
   text-align: center;
   margin: 16px 0 0;
@@ -376,7 +382,7 @@ h1 span {
 .extension-grid h2,
 .boundaries h2,
 .closing h2 {
-  font-size: 43px;
+  font-size: 2.6875rem;
   line-height: 1.1;
   letter-spacing: -0.055em;
   margin: 0 0 22px;
@@ -384,7 +390,7 @@ h1 span {
 }
 .section-intro > p:last-child,
 .extension-grid > div > p:not(.eyebrow) {
-  font-size: 15px;
+  font-size: 0.9375rem;
   line-height: 1.8;
   color: var(--muted);
   max-width: 365px;
@@ -400,17 +406,17 @@ h1 span {
   border: 0;
 }
 .feature-number {
-  font: 10px var(--mono);
+  font: 0.625rem var(--mono);
   color: #8c9bb1;
   padding-top: 4px;
 }
 .feature-list h3 {
-  font-size: 17px;
+  font-size: 1.0625rem;
   letter-spacing: -0.025em;
   margin: 0 0 10px;
 }
 .feature-list p {
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.9;
   color: var(--muted);
   margin: 0;
@@ -428,7 +434,7 @@ h1 span {
 }
 .text-link {
   display: inline-block;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--blue);
   font-weight: 600;
   margin-top: 14px;
@@ -450,7 +456,7 @@ h1 span {
   border-right: 1px solid #304565;
   background: transparent;
   color: #8fa5c4;
-  font-size: 11px;
+  font-size: 0.6875rem;
   padding: 14px 20px;
 }
 .code-tabs button[aria-selected="true"] {
@@ -464,7 +470,7 @@ h1 span {
   min-height: 250px;
   overflow: auto;
   tab-size: 2;
-  font: 12px/1.95 var(--mono);
+  font: 0.75rem/1.95 var(--mono);
 }
 .code-footnote {
   padding: 14px 20px;
@@ -472,7 +478,7 @@ h1 span {
   justify-content: space-between;
   gap: 10px;
   border-top: 1px solid #304565;
-  font: 9px var(--mono);
+  font: 0.5625rem var(--mono);
   color: #8fa5c4;
 }
 .code-footnote a {
@@ -490,12 +496,12 @@ h1 span {
   gap: 28px 35px;
 }
 .boundary-grid h3 {
-  font-size: 15px;
+  font-size: 0.9375rem;
   letter-spacing: -0.02em;
   margin: 0 0 10px;
 }
 .boundary-grid p {
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.85;
   color: var(--muted);
   margin: 0;
@@ -503,7 +509,7 @@ h1 span {
 .boundary-grid a {
   display: inline-block;
   color: var(--blue);
-  font-size: 11px;
+  font-size: 0.6875rem;
   margin-top: 12px;
 }
 .closing {
@@ -534,7 +540,7 @@ h1 span {
   gap: 30px;
 }
 .footer-main p {
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.8;
   color: var(--muted);
   max-width: 330px;
@@ -544,7 +550,7 @@ h1 span {
   display: flex;
   gap: 22px;
   align-items: center;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--muted);
 }
 .footer-bottom {
@@ -554,7 +560,7 @@ h1 span {
   gap: 20px;
   padding-block: 18px;
   border-top: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 0.625rem;
   color: #7386a1;
 }
 .footer-sponsor {
@@ -575,7 +581,7 @@ h1 span {
   height: 14px;
 }
 .footer-bottom > a {
-  font: 9px var(--mono);
+  font: 0.5625rem var(--mono);
 }
 .docs-shell {
   display: grid;
@@ -600,7 +606,7 @@ h1 span {
 }
 .docs-sidebar a {
   display: block;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--muted);
   padding: 9px 12px;
   border-radius: 5px;
@@ -612,7 +618,7 @@ h1 span {
 }
 .doc-toc a {
   display: block;
-  font-size: 10px;
+  font-size: 0.625rem;
   line-height: 1.7;
   color: #7487a3;
   padding: 5px 0;
@@ -621,20 +627,20 @@ h1 span {
   min-width: 0;
 }
 .doc-content h1 {
-  font-size: 44px;
+  font-size: 2.75rem;
   letter-spacing: -0.05em;
   margin: 0 0 24px;
   line-height: 1.15;
 }
 .doc-content h2 {
-  font-size: 24px;
+  font-size: 1.5rem;
   letter-spacing: -0.035em;
   margin: 45px 0 15px;
   scroll-margin-top: 30px;
   overflow-wrap: anywhere;
 }
 .doc-content h3 {
-  font-size: 17px;
+  font-size: 1.0625rem;
   letter-spacing: -0.025em;
   margin: 28px 0 12px;
   scroll-margin-top: 30px;
@@ -642,12 +648,12 @@ h1 span {
 }
 .doc-content p,
 .doc-content li {
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.9;
   color: #5d708c;
 }
 .doc-content > p:first-of-type {
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.8;
 }
 .doc-content a {
@@ -656,7 +662,7 @@ h1 span {
   text-underline-offset: 3px;
 }
 .doc-content code {
-  font: 11px/1.6 var(--mono);
+  font: 0.6875rem/1.6 var(--mono);
   background: #eaf0fa;
   padding: 2px 4px;
   border-radius: 3px;
@@ -677,7 +683,7 @@ h1 span {
   color: inherit;
   padding: 0;
   background: none;
-  font-size: 11px;
+  font-size: 0.6875rem;
   white-space: pre;
   overflow-wrap: normal;
   line-height: 1.85;
@@ -691,14 +697,14 @@ h1 span {
   color: #c9ddfa;
   padding: 4px 7px;
   border-radius: 4px;
-  font-size: 9px;
+  font-size: 0.5625rem;
 }
 .doc-content table {
   display: block;
   overflow-x: auto;
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.7;
   margin-block: 25px;
 }
@@ -732,7 +738,7 @@ h1 span {
   background: #eef4ff;
 }
 .doc-breadcrumb {
-  font: 10px var(--mono);
+  font: 0.625rem var(--mono);
   color: #8092ae;
   margin-bottom: 25px;
 }
@@ -744,7 +750,7 @@ h1 span {
   display: flex;
   align-items: center;
   gap: 24px;
-  font: 12px system-ui;
+  font: 0.75rem system-ui;
   border-bottom: 1px solid #dce3ef;
   color: #526680;
 }
@@ -771,7 +777,7 @@ h1 span {
     gap: 55px;
   }
   .hero h1 {
-    font-size: 64px;
+    font-size: 4rem;
   }
   .docs-shell {
     grid-template-columns: 160px minmax(0, 1fr);
@@ -794,7 +800,7 @@ h1 span {
   }
   .header-nav {
     gap: 17px;
-    font-size: 11px;
+    font-size: 0.6875rem;
     flex-wrap: wrap;
   }
   .header-nav .source-link {
@@ -806,25 +812,25 @@ h1 span {
     gap: 40px;
   }
   .hero h1 {
-    font-size: 62px;
+    font-size: 3.875rem;
   }
   .hero-description {
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
   .hero-aside {
     display: none;
   }
   .install-command code {
-    font-size: 9px;
+    font-size: 0.5625rem;
   }
   .section-label {
     align-items: flex-start;
   }
   .section-label h2 {
-    font-size: 15px;
+    font-size: 0.9375rem;
   }
   .window-chrome {
-    font-size: 8px;
+    font-size: 0.5rem;
   }
   .preview-badge {
     display: none;
@@ -837,7 +843,7 @@ h1 span {
     object-position: bottom right;
   }
   .figure-note {
-    font-size: 9px;
+    font-size: 0.5625rem;
   }
   .capabilities,
   .extension-grid,
@@ -852,7 +858,7 @@ h1 span {
   .extension-grid h2,
   .boundaries h2,
   .closing h2 {
-    font-size: 35px;
+    font-size: 2.1875rem;
   }
   .feature-list article {
     gap: 18px;
@@ -862,16 +868,16 @@ h1 span {
     padding-block: 50px;
   }
   .code-showcase pre {
-    font-size: 10px;
+    font-size: 0.625rem;
     padding: 25px 18px;
     min-height: 220px;
   }
   .code-tabs button {
-    font-size: 10px;
+    font-size: 0.625rem;
     padding: 13px 15px;
   }
   .code-footnote {
-    font-size: 8px;
+    font-size: 0.5rem;
     flex-wrap: wrap;
   }
   .boundaries {
@@ -914,25 +920,25 @@ h1 span {
   }
   .docs-sidebar a {
     padding: 7px 9px;
-    font-size: 11px;
+    font-size: 0.6875rem;
   }
   .docs-sidebar .tiny-caps {
     margin-bottom: 10px;
   }
   .doc-content h1 {
-    font-size: 35px;
+    font-size: 2.1875rem;
   }
   .doc-content h2 {
-    font-size: 22px;
+    font-size: 1.375rem;
   }
   .doc-content pre {
     padding: 30px 14px 18px;
   }
   .doc-content pre code {
-    font-size: 10px;
+    font-size: 0.625rem;
   }
   .demo-site-nav {
-    font-size: 11px;
+    font-size: 0.6875rem;
     gap: 16px;
     flex-wrap: wrap;
   }

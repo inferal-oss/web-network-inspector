@@ -508,7 +508,12 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
       view = { ids: visible.map((e) => e.id), start, end, fence: store.serial };
     }
     ({ first, stop } = bounds(view.ids));
-    text(get("network-range"), `${ms(start)} → ${ms(end)} since page load`);
+    text(
+      get("network-range"),
+      start < 0
+        ? "Retained history · includes previous page loads"
+        : `${ms(start)} → ${ms(end)} since page load`,
+    );
     const newCount = Math.max(0, store.serial - view.fence);
     const browsingStatus =
       frozen || browsing()

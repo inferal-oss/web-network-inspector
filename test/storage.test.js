@@ -121,3 +121,20 @@ test("clear during a pending storage write cannot restore stale data; failures r
   assert.equal(unavailable.persistence.error, "quota");
   await unavailable.persistence.close();
 });
+
+test("a resource preview interrupted by reload can be retried", async () => {
+  const storage = memory();
+  let store = await createPersistentCapture({ storage });
+  store.add({
+    kind: "resource",
+    url: "https://example.com/app.css",
+    resourcePreviewStatus: "Loading",
+  });
+  await store.persistence.close();
+  store = await createPersistentCapture({ storage });
+  assert.equal(
+    store.entries[0].resourcePreviewStatus,
+    "Interrupted by page reload",
+  );
+  await store.persistence.close();
+});

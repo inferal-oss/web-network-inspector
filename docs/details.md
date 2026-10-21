@@ -43,7 +43,7 @@ and can be retried. Previews use the same body limits and reader budget.
 You can also call `await inspector.loadResource(entry)` for a retained
 `kind: "resource"` entry. It does not replay the original request's headers or
 method. It requires the capture owner and an HTTP(S) URL without credentials.
-No resource preview is fetched automatically.
+The library defaults to `resourcePreviews: "manual"`. Set `resourcePreviews: "on-select"` to load the first preview when a resource is selected. The public demo uses this mode and shows the response without a load button. Failed previews expose a retry button. Request and response header dumps are expanded by default. Original resource timing is available in a separate disclosure.
 
 ## Replace or extend the renderer
 
@@ -87,3 +87,5 @@ its cleanup function. `renderDefault()` manages that cleanup for you.
 
 The React component accepts the same `renderDetails` prop. Keep the callback
 stable with `useCallback`; changing its identity recreates the inspector.
+
+Restored entries show **Previous page** for their start time and retain their absolute capture timestamp. The range label identifies history from previous page loads.

@@ -19,6 +19,7 @@ export function renderDefaultDetails({
   select,
   showMessages,
   loadResource,
+  resourcePreviews,
   name,
 }) {
   const urls = [];
@@ -64,7 +65,7 @@ export function renderDefaultDetails({
   const fields = [
     ["Type", entry.kind],
     ["Status", entry.status],
-    ["Started", ms(entry.start)],
+    ["Started", entry.restored ? "Previous page" : ms(entry.start)],
     [
       "Duration",
       entry.end == null
@@ -113,7 +114,11 @@ export function renderDefaultDetails({
     if (value != null) {
       dl.append(element("dt", "", key), element("dd", "", String(value)));
     }
-  detail.append(dl);
+  if (entry.kind === "resource") {
+    const metadata = element("details", "network-metadata");
+    metadata.append(element("summary", "", "Original timing and metadata"), dl);
+    detail.append(metadata);
+  } else detail.append(dl);
   function related(label, id) {
     if (!id) return;
     const item = store.byId.get(id),
@@ -144,26 +149,49 @@ export function renderDefaultDetails({
     });
     detail.append(button);
   }
-  if (entry.note) detail.append(element("p", "network-note", entry.note));
+  if (entry.note && entry.kind !== "resource")
+    detail.append(element("p", "network-note", entry.note));
   if (entry.kind === "resource" && loadResource) {
-    const button = element(
-      "button",
-      "button",
-      entry.resourcePreviewStatus === "Loading"
-        ? "Loading resource preview…"
-        : "Load resource preview",
-    );
-    button.type = "button";
-    button.disabled = entry.resourcePreviewStatus === "Loading";
-    listen(button, "click", () => {
-      void loadResource(entry).catch(() => {});
-    });
+    const load = () => {
+      void loadResource(entry).catch((error) =>
+        store.update(entry, {
+          resourcePreviewStatus: "Failed",
+          previewError: error.message,
+        }),
+      );
+    };
+    if (
+      resourcePreviews === "on-select" &&
+      !entry.resourceBody &&
+      (!entry.resourcePreviewStatus ||
+        entry.resourcePreviewStatus === "Interrupted by page reload")
+    )
+      queueMicrotask(load);
+    if (
+      resourcePreviews !== "on-select" ||
+      entry.resourcePreviewStatus === "Failed"
+    ) {
+      const button = element(
+        "button",
+        "button",
+        entry.resourcePreviewStatus === "Loading"
+          ? "Loading resource preview…"
+          : entry.resourcePreviewStatus === "Failed"
+            ? "Retry resource preview"
+            : "Load resource preview",
+      );
+      button.type = "button";
+      button.disabled = entry.resourcePreviewStatus === "Loading";
+      listen(button, "click", load);
+      detail.append(button);
+    }
     detail.append(
-      button,
       element(
         "p",
         "network-note",
-        "Makes a separate GET, preferring the browser cache. Its headers and body can differ from the original load. Browser-managed request headers are not exposed.",
+        resourcePreviews === "on-select"
+          ? "Response preview from a separate, cache-preferred GET. Original browser-managed request headers are not exposed."
+          : "Makes a separate GET, preferring the browser cache. Its headers and body can differ from the original load. Browser-managed request headers are not exposed.",
       ),
     );
     if (entry.resourcePreviewStatus)
@@ -282,6 +310,7 @@ export function createDetailView(container, options) {
     select,
     showMessages,
     loadResource,
+    resourcePreviews,
     renderDetails = renderDefaultDetails,
     detailFrame = true,
   } = options;
@@ -291,7 +320,8 @@ export function createDetailView(container, options) {
     selected = null,
     disposed = false,
     cleanup = null,
-    generation = 0;
+    generation = 0,
+    resetScroll = true;
   let frame = null;
   function clear() {
     const previous = cleanup;
@@ -305,6 +335,9 @@ export function createDetailView(container, options) {
   function draw() {
     if (disposed || !body) return;
     const revision = ++generation;
+    const scroll = document?.scrollingElement,
+      top = resetScroll ? 0 : (scroll?.scrollTop ?? 0);
+    resetScroll = false;
     clear();
     if (disposed || revision !== generation) return;
     body.replaceChildren();
@@ -320,6 +353,7 @@ export function createDetailView(container, options) {
       select,
       showMessages,
       loadResource,
+      resourcePreviews,
     };
     context.renderDefault = () => {
       const dispose = renderDefaultDetails(context);
@@ -339,6 +373,7 @@ export function createDetailView(container, options) {
       };
       if (disposed || revision !== generation) dispose();
       else cleanup = dispose;
+      if (scroll && revision === generation) scroll.scrollTop = top;
     } catch (error) {
       for (const fn of defaults) fn();
       body.textContent = `Details renderer failed: ${error.message}`;
@@ -378,6 +413,7 @@ export function createDetailView(container, options) {
   }
   return {
     render(entry, id) {
+      if (selected !== id) resetScroll = true;
       current = entry;
       selected = id;
       draw();

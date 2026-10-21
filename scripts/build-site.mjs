@@ -1,4 +1,5 @@
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { marked } from "marked";
@@ -22,8 +23,23 @@ export async function buildSite({
   if (output === resolve(root) || root.startsWith(output + "/"))
     throw new Error("Refusing to replace the source directory.");
   const pkg = JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
+  const hash = createHash("sha256");
+  for (const file of (await readdir(resolve(root, "src"))).sort())
+    hash.update(await readFile(resolve(root, "src", file)));
+  for (const file of [
+    "examples/demo.js",
+    "examples/style.css",
+    "site/site.css",
+    "site/site.js",
+  ])
+    hash.update(await readFile(resolve(root, file)));
+  hash.update(await readFile(resolve(root, "examples/display/display.js")));
+  hash.update(await readFile(resolve(root, "examples/display/display.css")));
+  const revision = hash.digest("hex").slice(0, 12);
+  const runtime = "runtime-" + revision;
+  const displayHead = `<link rel="stylesheet" href="${basePath}assets/display/widget.css"><link rel="stylesheet" href="${basePath}assets/display/display.css?v=${revision}"><script src="${basePath}assets/display/openregard-0.3.0.js"></script><script src="${basePath}assets/display/display.js?v=${revision}"></script>`;
   const header = (active) =>
-    `<a class="skip-link" href="#main">Skip to content</a><header class="site-header"><div class="header-inner wrap"><a class="brand" href="${basePath}"><img src="${basePath}assets/wni-mark.svg" width="32" height="32" alt=""><span>Web Network Inspector</span></a><nav class="header-nav" aria-label="Main navigation"><a href="${basePath}"${active === "overview" ? ' aria-current="page"' : ""}>Overview</a><a href="${basePath}demo/">Live demo</a><a href="${basePath}docs/"${active === "docs" ? ' aria-current="page"' : ""}>Documentation</a><a class="source-link" href="https://github.com/inferal-oss/web-network-inspector">GitHub ↗</a></nav></div></header>`;
+    `<a class="skip-link" href="#main">Skip to content</a><header class="site-header"><div class="header-inner wrap"><a class="brand" href="${basePath}"><img src="${basePath}assets/wni-mark.svg" width="32" height="32" alt=""><span>Web Network Inspector</span></a><nav class="header-nav" aria-label="Main navigation"><a href="${basePath}"${active === "overview" ? ' aria-current="page"' : ""}>Overview</a><a href="${basePath}demo/">Live demo</a><a href="${basePath}docs/"${active === "docs" ? ' aria-current="page"' : ""}>Documentation</a><a class="source-link" href="https://github.com/inferal-oss/web-network-inspector">GitHub ↗</a><div data-inferal-display></div></nav></div></header>`;
   const sponsor = `<p class="footer-sponsor">Sponsored by <a href="https://inferal.com/"><img src="${basePath}assets/inferal-mark.svg" width="12" height="14" alt="">Inferal</a></p>`;
   const footer = `<footer class="site-footer"><div class="wrap footer-main"><div><a class="brand" href="${basePath}"><img src="${basePath}assets/wni-mark.svg" width="28" height="28" alt="">Web Network Inspector</a><p>Your network, messages, and application events.<br>One inspector. Yours to extend.</p></div><nav class="footer-links" aria-label="Footer"><a href="${basePath}demo/">Live demo</a><a href="${basePath}docs/api/">API reference</a><a href="${basePath}docs/styling/">Styling guide</a><a href="https://github.com/inferal-oss/web-network-inspector">Source ↗</a></nav></div><div class="wrap footer-bottom">${sponsor}<a href="https://github.com/inferal-oss/web-network-inspector/blob/main/LICENSE">MIT licensed · Made to be useful</a><a href="/">Inferal Open Source ↗</a></div></footer>`;
   await rm(output, { recursive: true, force: true });
@@ -31,6 +47,11 @@ export async function buildSite({
   await cp(resolve(root, "site/assets"), resolve(output, "assets"), {
     recursive: true,
   });
+  await cp(
+    resolve(root, "examples/display"),
+    resolve(output, "assets/display"),
+    { recursive: true },
+  );
   await cp(resolve(root, "site/site.css"), resolve(output, "assets/site.css"));
   await cp(resolve(root, "site/site.js"), resolve(output, "assets/site.js"));
   await cp(
@@ -42,8 +63,23 @@ export async function buildSite({
     recursive: true,
     filter: (source) => !source.includes("/screenshots"),
   });
+  await cp(resolve(root, "src"), resolve(output, runtime), { recursive: true });
+  const demoSource = (
+    await readFile(resolve(output, "demo/demo.js"), "utf8")
+  ).replaceAll("../src/", "../" + runtime + "/");
+  await writeFile(resolve(output, "demo/demo.js"), demoSource);
   let demo = await readFile(resolve(output, "demo/index.html"), "utf8");
   demo = demo
+    .replace(
+      'src="./display/display.js"',
+      `src="./display/display.js?v=${revision}"`,
+    )
+    .replace(
+      'href="./display/display.css"',
+      `href="./display/display.css?v=${revision}"`,
+    )
+    .replace('src="./demo.js"', `src="./demo.js?v=${revision}"`)
+    .replace('href="./style.css"', `href="./style.css?v=${revision}"`)
     .replace(
       "</head>",
       `<link rel="stylesheet" href="${basePath}assets/site.css"><link rel="icon" href="${basePath}assets/wni-mark.svg" type="image/svg+xml"></head>`,
@@ -61,7 +97,8 @@ export async function buildSite({
     .replaceAll("{{BASE}}", basePath)
     .replaceAll("{{VERSION}}", escape(pkg.version))
     .replace("{{HEADER}}", header("overview"))
-    .replace("{{FOOTER}}", footer);
+    .replace("{{FOOTER}}", footer)
+    .replace("</head>", displayHead + "</head>");
   await writeFile(resolve(output, "index.html"), highlightHTML(landing));
   await writeFile(resolve(output, ".nojekyll"), "");
   const pages = [
@@ -72,6 +109,7 @@ export async function buildSite({
     ["Capture filters", "docs/filtering/", "docs/filtering.md"],
     ["Request details", "docs/details/", "docs/details.md"],
     ["Local history", "docs/storage/", "docs/storage.md"],
+    ["Display preferences", "docs/display/", "docs/display.md"],
   ];
   for (const [title, path, source] of pages) {
     const html = await marked.parse(
@@ -115,7 +153,7 @@ export async function buildSite({
           `<a href="${basePath}${href}"${href === path ? ' aria-current="page"' : ""}>${name}</a>`,
       )
       .join("");
-    const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} · Web Network Inspector</title><meta name="description" content="${escape(title)} for Web Network Inspector: a small, extensible in-page network waterfall."><link rel="icon" href="${basePath}assets/wni-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="${basePath}assets/site.css"><script type="module" src="${basePath}assets/site.js"></script></head><body>${header("docs")}<main id="main" class="wrap docs-shell"><aside class="docs-sidebar"><span class="tiny-caps">DOCUMENTATION</span><nav aria-label="Documentation">${links}<a href="${basePath}demo/">Live demo ↗</a></nav></aside><article class="doc-content"><div class="doc-breadcrumb">WEB NETWORK INSPECTOR / DOCS</div>${highlightHTML(document.querySelector("article").innerHTML)}</article><aside class="doc-toc"><span class="tiny-caps">ON THIS PAGE</span><nav aria-label="On this page">${toc.join("")}</nav></aside></main>${footer}</body></html>`;
+    const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} · Web Network Inspector</title><meta name="description" content="${escape(title)} for Web Network Inspector: a small, extensible in-page network waterfall."><link rel="icon" href="${basePath}assets/wni-mark.svg" type="image/svg+xml">${displayHead}<link rel="stylesheet" href="${basePath}assets/site.css"><script type="module" src="${basePath}assets/site.js"></script></head><body>${header("docs")}<main id="main" class="wrap docs-shell"><aside class="docs-sidebar"><span class="tiny-caps">DOCUMENTATION</span><nav aria-label="Documentation">${links}<a href="${basePath}demo/">Live demo ↗</a></nav></aside><article class="doc-content"><div class="doc-breadcrumb">WEB NETWORK INSPECTOR / DOCS</div>${highlightHTML(document.querySelector("article").innerHTML)}</article><aside class="doc-toc"><span class="tiny-caps">ON THIS PAGE</span><nav aria-label="On this page">${toc.join("")}</nav></aside></main>${footer}</body></html>`;
     await mkdir(resolve(output, path), { recursive: true });
     await writeFile(resolve(output, path, "index.html"), page);
   }

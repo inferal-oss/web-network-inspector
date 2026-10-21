@@ -503,9 +503,7 @@ test("resource details load headers and content in a sandboxed frame and persist
   fixture(async (page) => {
     await page.getByRole("button", { name: /GET \/src\/style\.css/ }).click();
     const details = page.frameLocator(".network-detail-frame");
-    await details
-      .getByRole("button", { name: "Load resource preview", exact: true })
-      .click();
+
     await details
       .getByRole("heading", { name: /Loaded resource body/ })
       .waitFor();
@@ -526,6 +524,18 @@ test("resource details load headers and content in a sandboxed frame and persist
       };
     });
     assert.ok(retained.body > 100);
+    assert.equal(
+      await details
+        .getByRole("button", { name: "Load resource preview", exact: true })
+        .count(),
+      0,
+    );
+    assert.match(
+      await details
+        .locator("body")
+        .evaluate((node) => getComputedStyle(node).fontFamily),
+      /system-ui|sans-serif/,
+    );
     await page.reload();
     await page.waitForFunction(() => window.inspector);
     const restored = await page.evaluate(() => {
