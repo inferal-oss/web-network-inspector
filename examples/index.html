@@ -143,6 +143,67 @@ inspector.setColumns([
             </details>
           </div>
         </section>
+        <section class="card socket-card" aria-labelledby="details-title">
+          <div>
+            <span class="step">05 / APPLICATION DETAILS</span>
+            <h2 id="details-title">A custom view, right where you need it.</h2>
+            <p>
+              Select any row to see the demo's custom summary on the right.
+              Application events show their level and environment; requests show
+              timing and payload size. The standard headers and body previews
+              follow below.
+            </p>
+          </div>
+          <div>
+            <details class="columns-example" open>
+              <summary>See the details renderer API</summary>
+              <pre><code class="language-js">renderDetails(context) {
+  const summary = context.document.createElement("section");
+  summary.textContent = context.entry?.correlationId ?? "App summary";
+  context.container.append(summary);
+  context.renderDefault();
+  return () =&gt; summary.remove();
+}</code></pre>
+            </details>
+            <p class="result">
+              View settings use localStorage. Retained capture history uses
+              IndexedDB.
+            </p>
+          </div>
+        </section>
+        <section class="card socket-card" aria-labelledby="theme-title">
+          <div>
+            <span class="step">06 / CUSTOM STYLING</span>
+            <h2 id="theme-title">A different look. The same inspector.</h2>
+            <p>
+              Try Plum: warm surfaces, violet accents, and softer controls. CSS
+              variables cross the Shadow DOM boundary; a small override
+              stylesheet adds the finishing touches. Your display preferences
+              still apply, including in the details preview.
+            </p>
+            <label class="theme-choice"
+              ><input type="checkbox" id="theme-toggle" /> Use the custom Plum
+              theme</label
+            >
+            <p class="result" id="theme-result" role="status">
+              Default inspector styling
+            </p>
+          </div>
+          <details class="columns-example" open>
+            <summary>See the theme CSS</summary>
+            <pre><code class="language-css">[data-web-network-inspector][data-demo-theme="plum"] {
+  --brand: #7c3aed;
+  --brand-dark: #6024b5;
+  --brand-soft: #efe5ff;
+  --paper: #faf5ff;
+  --ink: #312044;
+}
+/* Add inside inspector.root for internal selectors. */
+:host([data-demo-theme="plum"]) .network-popup {
+  border-radius: 18px;
+}</code></pre>
+          </details>
+        </section>
       </div>
       <div class="extension-note">
         <span class="extension-symbol" aria-hidden="true">↙</span>

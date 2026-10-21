@@ -61,22 +61,24 @@ export function Example() {
 
 ## Props and lifecycle
 
-| Prop                  | Behavior                                                                                                                          |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `open`                | Optional boolean. Initial state and subsequent prop changes call `setOpen`; omitting it lets the inspector manage its own toggle. |
-| `scope`               | Window to inspect; defaults to the rendered container's window.                                                                   |
-| `capture`             | Defaults to true. False creates a view without installing transport wrappers.                                                     |
-| `store`               | Optional shared `NetworkCapture`. Configure its filter on the store.                                                              |
-| `filter`              | Predicate for an instance-owned store; do not combine with `store`.                                                               |
-| `stylesheet`, `nonce` | Same stylesheet options as `createInspector`.                                                                                     |
-| `resourcePreviews`    | `"manual"` or `"on-select"`, as in `createInspector`.                                                                             |
-| `columns`             | Ordered definitions described in [waterfall columns](columns.md). Memoize the array to keep the instance stable.                  |
-| `renderDetails`       | Custom details renderer; receives the iframe context described in [request details](details.md).                                  |
-| `onReady`             | Receives the created inspector; may return cleanup.                                                                               |
-| `ref`                 | Object or stable callback ref receiving the inspector API.                                                                        |
-| Other props           | Passed to the outer `div`, including `className`, `style`, `id`, and accessible attributes.                                       |
+| Prop                       | Behavior                                                                                                                          |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `open`                     | Optional boolean. Initial state and subsequent prop changes call `setOpen`; omitting it lets the inspector manage its own toggle. |
+| `scope`                    | Window to inspect; defaults to the rendered container's window.                                                                   |
+| `capture`                  | Defaults to true. False creates a view without installing transport wrappers.                                                     |
+| `store`                    | Optional shared `NetworkCapture`. Configure its filter on the store.                                                              |
+| `filter`                   | Predicate for an instance-owned store; do not combine with `store`.                                                               |
+| `stylesheet`, `nonce`      | Same stylesheet options as `createInspector`.                                                                                     |
+| `resourcePreviews`         | `"manual"` or `"on-select"`, as in `createInspector`.                                                                             |
+| `columns`                  | Ordered definitions described in [waterfall columns](columns.md). Memoize the array to keep the instance stable.                  |
+| `viewState`                | Preloaded view snapshot. Memoize its identity. See [view preferences](preferences.md).                                            |
+| `includePreviousPageLoads` | Initial history-checkbox value; defaults to true.                                                                                 |
+| `renderDetails`            | Custom details renderer; receives the iframe context described in [request details](details.md).                                  |
+| `onReady`                  | Receives the created inspector; may return cleanup.                                                                               |
+| `ref`                      | Object or stable callback ref receiving the inspector API.                                                                        |
+| Other props                | Passed to the outer `div`, including `className`, `style`, `id`, and accessible attributes.                                       |
 
-Changes to `scope`, `store`, `filter`, `capture`, `stylesheet`, `nonce`, `resourcePreviews`, `columns`, `renderDetails`, or the ref identity destroy and recreate the instance. A recreated instance with no external store starts with a fresh history. Changing ordinary container props, `onReady`, or `open` does not recreate capture. Memoize functions and stores so normal parent renders do not reset it:
+Changes to `scope`, `store`, `filter`, `capture`, `stylesheet`, `nonce`, `resourcePreviews`, `columns`, `renderDetails`, `viewState`, `includePreviousPageLoads`, or the ref identity destroy and recreate the instance. A recreated instance with no external store starts with a fresh history. Changing ordinary container props, `onReady`, or `open` does not recreate capture. Memoize functions and stores so normal parent renders do not reset it:
 
 ```jsx
 import { useMemo } from "react";
@@ -113,3 +115,28 @@ import inspectorCSS from "web-network-inspector/style.css?url";
 ```
 
 A plain global CSS import does not style Shadow DOM internals. See the [styling guide](styling.md) for overrides, custom controls, and replacing the base stylesheet, and the [API reference](api.md) for methods available through the ref.
+
+## Remember view settings
+
+The component uses synchronous `createInspector`; it does not automatically
+open preference storage. Load a snapshot in your application before rendering
+it, pass that stable snapshot as `viewState`, and save changes through `onReady`:
+
+```jsx
+<NetworkInspector
+  viewState={initialView}
+  includePreviousPageLoads={false}
+  onReady={(api) =>
+    api.subscribeView((snapshot) => {
+      // Your application owns error handling and write scheduling.
+      saveViewSettings(snapshot);
+    })
+  }
+/>
+```
+
+Keep `initialView` stable for that mount. Saving each change back to the
+`viewState` prop would recreate capture. Use `api.setViewState` to apply a
+snapshot to the existing instance. The unsubscribe function returned by
+`subscribeView` serves as `onReady` cleanup. For the async factory and adapter
+contract, see [view preferences](preferences.md).

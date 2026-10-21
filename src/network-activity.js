@@ -1,3 +1,4 @@
+import { restoreViewState } from "./view-preferences.js";
 import {
   activityName as name,
   activitySize,
@@ -89,6 +90,45 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
   const latest = get("network-latest");
   const connection = get("network-connection");
   const sortSize = get("network-sort-size");
+  const previousLoads = get("network-previous");
+  const catalog = new Map(
+    (options.columnCatalog ?? options.columns ?? []).map((column) => [
+      column.id,
+      column,
+    ]),
+  );
+  const viewListeners = new Set();
+  function notifyView() {
+    for (const listener of viewListeners) {
+      try {
+        listener(getViewState());
+      } catch {}
+    }
+  }
+  function getViewState() {
+    const current = columnLayout.getColumns();
+    const known = new Set(current.map((column) => column.id));
+    const all = [
+      ...current,
+      ...[...catalog.values()]
+        .filter((column) => !known.has(column.id))
+        .map((column) => ({ ...column, hidden: true })),
+    ];
+    return {
+      version: 1,
+      columns: all.map(({ id, width, flex, hidden, sort }) => ({
+        id,
+        width,
+        flex: Boolean(flex),
+        hidden: Boolean(hidden),
+        sortable: typeof sort === "function",
+      })),
+      sorting: sorting
+        ? { id: sorting.id, direction: sorting.direction }
+        : null,
+      includePreviousPageLoads: previousLoads.checked,
+    };
+  }
   const columnLayout = setupColumnLayout({
     root,
     scope,
@@ -96,6 +136,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     columns: options.columns,
     sortSize,
     onSort: sortColumn,
+    onChange: notifyView,
   });
   cleanup.push(() => columnLayout.destroy());
   const resize = get("network-resize");
@@ -138,7 +179,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     dirty = true,
     detailRevision = "",
     timer = null,
-    sorting = null,
+    sorting = options.initialView?.sorting ?? null,
     sortError = "";
   let view = null,
     frozen = false,
@@ -147,6 +188,9 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     listFocused = false,
     pointerPressed = false,
     releasePointer = null;
+  previousLoads.checked = options.initialView?.includePreviousPageLoads ?? true;
+  if (sorting) follow.checked = false;
+  renderSortControl();
   const rows = new Map();
   cleanup.push(
     store.subscribe(() => {
@@ -279,6 +323,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     renderSortControl();
     detailRevision = "";
     render();
+    notifyView();
   });
   listen(pause, "click", () => {
     store.paused = !store.paused;
@@ -315,6 +360,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     dirty = true;
     render();
     list.scrollTop = 0;
+    notifyView();
   }
   listen(follow, "change", () => {
     if (follow.checked) {
@@ -325,6 +371,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     } else freezeView();
     dirty = true;
     render();
+    notifyView();
   });
   function navigate(direction) {
     const ids = view?.ids ?? [];
@@ -349,12 +396,31 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     connection.value = "";
     follow.checked = true;
     sorting = null;
+    sortError = "";
     resetView();
     renderSortControl();
     dirty = true;
     render();
     detail.scrollTop = 0;
+    notifyView();
   });
+  function setIncludePreviousPageLoads(value) {
+    if (typeof value !== "boolean")
+      throw new TypeError("includePreviousPageLoads must be a boolean.");
+    previousLoads.checked = value;
+    if (!value && store.byId.get(selected)?.restored) {
+      selected = null;
+      detailRevision = "";
+    }
+    connection.value = "";
+    resetView();
+    dirty = true;
+    render();
+    notifyView();
+  }
+  listen(previousLoads, "change", () =>
+    setIncludePreviousPageLoads(previousLoads.checked),
+  );
   function select(id) {
     if (selected !== id) freezeView();
     selected = selected === id ? null : id;
@@ -399,7 +465,11 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     );
     const socketIds = new Set(
       store.entries
-        .filter((e) => e.kind === "socket" || e.kind === "message")
+        .filter(
+          (e) =>
+            (!e.restored || previousLoads.checked) &&
+            (e.kind === "socket" || e.kind === "message"),
+        )
         .map((e) => String(e.connection ?? e.id)),
     );
     for (const id of socketIds)
@@ -424,6 +494,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
         option.remove();
     const query = search.value.trim().toLowerCase();
     const matches = (entry) =>
+      (!entry.restored || previousLoads.checked) &&
       (!connection.value ||
         String(entry.connection ?? entry.id) === connection.value) &&
       (!query ||
@@ -443,6 +514,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
       sorting = null;
       sortError = `Sort failed: ${String(error?.message ?? error).slice(0, 200)}`;
       renderSortControl();
+      notifyView();
       filtered = sortActivity(
         store.entries.filter(
           (entry) =>
@@ -505,9 +577,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     ({ first, stop } = bounds(view.ids));
     text(
       get("network-range"),
-      start < 0
-        ? "Retained history · includes previous page loads"
-        : `${ms(start)} → ${ms(end)} since page load`,
+      start < 0 ? "" : `${ms(start)} → ${ms(end)} since page load`,
     );
     const newCount = Math.max(0, store.serial - view.fence);
     const browsingStatus =
@@ -603,6 +673,16 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     if (!browsing() && follow.checked) list.scrollTop = list.scrollHeight;
     renderDetail(store.byId.get(selected));
   }
+  function replaceColumns(columns) {
+    columnLayout.setColumns(columns);
+    sorting = null;
+    sortError = "";
+    renderSortControl();
+    for (const row of rows.values()) row.remove();
+    rows.clear();
+    resetView();
+    dirty = true;
+  }
   const counterTimer = setInterval(() => {
     if (!open && dirty) {
       render();
@@ -614,21 +694,63 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     render,
     select,
     getColumns: columnLayout.getColumns,
-    setColumns(columns) {
-      columnLayout.setColumns(columns);
-      sorting = null;
+    getViewState,
+    getIncludePreviousPageLoads: () => previousLoads.checked,
+    setIncludePreviousPageLoads,
+    subscribeView(listener) {
+      if (typeof listener !== "function")
+        throw new TypeError("View listener must be a function.");
+      viewListeners.add(listener);
+      return () => viewListeners.delete(listener);
+    },
+    setViewState(snapshot) {
+      const restored = restoreViewState(
+        [...catalog.values()],
+        snapshot,
+        options.initialView?.includePreviousPageLoads ?? true,
+      );
+      replaceColumns(restored.columns);
+      sorting = restored.sorting;
       sortError = "";
+      previousLoads.checked = restored.includePreviousPageLoads;
+      if (!previousLoads.checked && store.byId.get(selected)?.restored) {
+        selected = null;
+        detailRevision = "";
+      }
+      follow.checked = !sorting;
       renderSortControl();
-      for (const row of rows.values()) row.remove();
-      rows.clear();
       resetView();
       dirty = true;
       render();
+      notifyView();
+    },
+    setColumns(columns) {
+      // Validate first; an invalid replacement must not change the catalog.
+      const previous = columnLayout.getColumns();
+      replaceColumns(columns);
+      for (const column of previous)
+        if (catalog.has(column.id))
+          catalog.set(column.id, {
+            ...catalog.get(column.id),
+            width: column.width,
+            flex: column.flex,
+          });
+      for (const column of columnLayout.getColumns())
+        catalog.set(column.id, column);
+      const current = new Set(
+        columnLayout.getColumns().map((column) => column.id),
+      );
+      for (const id of catalog.keys())
+        if (catalog.size > 24 && !current.has(id)) catalog.delete(id);
+      dirty = true;
+      render();
+      notifyView();
     },
     destroy() {
       clearInterval(timer);
       clearInterval(counterTimer);
       clearTimeout(releasePointer);
+      viewListeners.clear();
       for (const fn of cleanup) fn();
     },
   };

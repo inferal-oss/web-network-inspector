@@ -968,3 +968,263 @@ test("demo visibility controls compose default and colorful custom columns and k
       true,
     );
   }));
+
+test("demo restores visibility, widths, sort direction, sort opt-outs, and history setting on reload", () =>
+  fixture(async (page) => {
+    const choices = page.getByRole("group", {
+      name: "Visible columns",
+      exact: true,
+    });
+    await page
+      .getByRole("button", { name: "Try custom columns", exact: true })
+      .click();
+    await choices.getByLabel("Status", { exact: true }).uncheck();
+    await page.getByLabel("Size sorting", { exact: true }).uncheck();
+    const grip = page.getByRole("separator", {
+      name: "Resize Request / event column",
+      exact: true,
+    });
+    await grip.press("Shift+ArrowRight");
+    await grip.press("ArrowRight");
+    await page.getByLabel("Previous page loads", { exact: true }).uncheck();
+    const sorter = page.locator('[data-sort-column="insight"]');
+    await sorter.click();
+    await sorter.click();
+    await page.reload();
+    await page.waitForFunction(() => window.inspector);
+    assert.equal(
+      await choices.getByLabel("Status", { exact: true }).isChecked(),
+      false,
+    );
+    assert.equal(
+      await choices.getByLabel("Activity Insight", { exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(await grip.getAttribute("aria-valuenow"), "380");
+    assert.equal(await page.locator('[data-sort-column="size"]').count(), 0);
+    assert.match(await sorter.getAttribute("aria-label"), /ascending/);
+    assert.equal(
+      await page.getByLabel("Previous page loads", { exact: true }).isChecked(),
+      false,
+    );
+    assert.equal(
+      await page.evaluate(
+        () => window.inspector.getColumns().find((c) => c.id === "size").sort,
+      ),
+      false,
+    );
+    const saved = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem("web-network-inspector-demo:view-v1")),
+    );
+    assert.equal(saved.version, 1);
+    assert.equal(saved.sorting.id, "insight");
+    assert.equal(JSON.stringify(saved).includes("requestBody"), false);
+    await page
+      .getByRole("button", { name: "Reset columns", exact: true })
+      .click();
+    await page.evaluate(() => window.inspector.preferences.flush());
+    await page.reload();
+    await page.waitForFunction(() => window.inspector);
+    assert.equal(await grip.getAttribute("aria-valuenow"), "320");
+    assert.equal(
+      await choices.getByLabel("Status", { exact: true }).isChecked(),
+      true,
+    );
+    assert.equal(
+      await choices.getByLabel("Activity Insight", { exact: true }).isChecked(),
+      false,
+    );
+  }));
+
+test("previous-page checkbox hides restored rows and selection without deleting retained data", () =>
+  fixture(async (page) => {
+    await page.evaluate(() => {
+      window.inspector.store.clear();
+      window.inspector.store.add({
+        kind: "event",
+        eventType: "old",
+        label: "Old retained event",
+        restored: true,
+        start: -1000,
+        end: -1000,
+      });
+      window.inspector.recordEvent({ label: "Current page event" });
+    });
+    await page.getByRole("button", { name: /Old retained event/ }).click();
+    await page.getByLabel("Previous page loads", { exact: true }).uncheck();
+    assert.equal(
+      await page.getByRole("button", { name: /Old retained event/ }).count(),
+      0,
+    );
+    assert.equal(
+      await page.getByRole("button", { name: /Current page event/ }).count(),
+      1,
+    );
+    assert.match(
+      await page
+        .frameLocator(".network-detail-frame")
+        .locator("body")
+        .textContent(),
+      /Select a request/,
+    );
+    assert.equal(
+      await page.evaluate(() =>
+        window.inspector.store.entries.some(
+          (e) => e.label === "Old retained event",
+        ),
+      ),
+      true,
+    );
+    await page.getByLabel("Previous page loads", { exact: true }).check();
+    await page.getByRole("button", { name: /Old retained event/ }).waitFor();
+    assert.equal(await page.locator("#network-range").textContent(), "");
+  }));
+
+test("persistent inspector supports asynchronous custom storage and reports unavailable storage", () =>
+  fixture(async (page) => {
+    const result = await page.evaluate(async () => {
+      const { createPersistentInspector, defaultColumns } = await import(
+        "/src/index.js"
+      );
+      window.inspector.destroy();
+      let saved = {
+        version: 1,
+        columns: [
+          { id: "hostPath", width: 510, hidden: false },
+          { id: "size", hidden: true },
+        ],
+        sorting: null,
+        includePreviousPageLoads: false,
+      };
+      let closed = 0;
+      const storage = {
+        async load() {
+          await new Promise((r) => setTimeout(r, 10));
+          return saved;
+        },
+        async save(value) {
+          await new Promise((r) => setTimeout(r, 10));
+          saved = value;
+        },
+        async close() {
+          closed++;
+        },
+      };
+      window.inspector = await createPersistentInspector({
+        capture: false,
+        open: true,
+        storage,
+        columns: defaultColumns,
+      });
+      const initial = window.inspector.getViewState();
+      window.inspector.setIncludePreviousPageLoads(true);
+      await window.inspector.preferences.flush();
+      const updated = saved;
+      await window.inspector.preferences.close();
+      window.inspector.destroy();
+      window.inspector = await createPersistentInspector({
+        capture: false,
+        storage: {
+          load() {
+            throw Error("Blocked storage");
+          },
+          save() {
+            throw Error("Blocked storage");
+          },
+        },
+      });
+      return {
+        initial,
+        updated,
+        closed,
+        status: window.inspector.preferences.status,
+        error: window.inspector.preferences.error,
+      };
+    });
+    assert.equal(
+      result.initial.columns.find((c) => c.id === "hostPath").width,
+      510,
+    );
+    assert.equal(
+      result.initial.columns.find((c) => c.id === "size").hidden,
+      true,
+    );
+    assert.equal(result.initial.includePreviousPageLoads, false);
+    assert.equal(result.updated.includePreviousPageLoads, true);
+    assert.equal(result.closed, 1);
+    assert.equal(result.status, "Unavailable");
+    assert.match(result.error, /Blocked storage/);
+  }));
+
+test("demo custom details render an application summary and keep default headers and body", () =>
+  fixture(async (page) => {
+    await page.getByLabel("Level", { exact: true }).selectOption("warning");
+    await page
+      .getByRole("button", { name: "Record an application event", exact: true })
+      .click();
+    await page.getByRole("button", { name: /Saved a draft/ }).click();
+    const details = page.frameLocator(".network-detail-frame");
+    const summary = details.getByRole("region", {
+      name: "Custom application summary",
+      exact: true,
+    });
+    await summary.waitFor();
+    assert.match(
+      await summary.textContent(),
+      /CUSTOM DETAILS RENDERER.*Saved a draft.*Level: warning.*Environment: Sandbox/,
+    );
+    assert.equal(await details.locator(".network-json-tree").count(), 1);
+    await page
+      .getByRole("button", { name: "Fetch example JSON", exact: true })
+      .click();
+    await page.getByRole("button", { name: /Jump to latest/ }).click();
+    await page.getByRole("button", { name: /POST \/anything/ }).click();
+    await summary.waitFor();
+    assert.match(
+      await details.locator("body").textContent(),
+      /Request headers.*Response headers.*Response body/s,
+    );
+    assert.equal(await details.locator(".demo-detail-card").count(), 1);
+  }));
+
+test("demo theme updates host, selected details, persists, and respects display contrast", () =>
+  fixture(async (page) => {
+    await page
+      .getByRole("button", { name: "Record an application event", exact: true })
+      .click();
+    await page.getByRole("button", { name: /Saved a draft/ }).click();
+    const frame = page.frameLocator(".network-detail-frame");
+    await frame
+      .getByRole("region", { name: "Custom application summary" })
+      .waitFor();
+    const theme = page.getByLabel("Use the custom Plum theme");
+    await theme.check();
+    const colors = () =>
+      page.evaluate(() => {
+        const api = window.inspector;
+        return [
+          getComputedStyle(api.host).getPropertyValue("--brand").trim(),
+          getComputedStyle(
+            api.root.querySelector(".network-detail-frame").contentDocument
+              .documentElement,
+          )
+            .getPropertyValue("--brand")
+            .trim(),
+        ];
+      });
+    assert.deepEqual(await colors(), ["#7c3aed", "#7c3aed"]);
+    await page.reload();
+    await page.waitForFunction(() => window.inspector);
+    assert.equal(await theme.isChecked(), true);
+    await page.getByRole("button", { name: /Saved a draft/ }).click();
+    await frame
+      .getByRole("region", { name: "Custom application summary" })
+      .waitFor();
+    await page.evaluate(() => window.inferalDisplay.setProfile("contrast"));
+    assert.deepEqual(await colors(), ["#0645ad", "#0645ad"]);
+    await page.evaluate(() => window.inferalDisplay.setProfile("standard"));
+    assert.deepEqual(await colors(), ["#7c3aed", "#7c3aed"]);
+    await theme.uncheck();
+    assert.notEqual((await colors())[0], "#7c3aed");
+    assert.equal((await colors())[0], (await colors())[1]);
+  }));

@@ -74,6 +74,7 @@ test("all site pages and local assets resolve beneath the project prefix", async
     "docs/details/",
     "docs/columns/",
     "docs/storage/",
+    "docs/preferences/",
     "docs/display/",
     "demo/",
   ]) {

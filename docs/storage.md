@@ -77,3 +77,12 @@ async close() {} }`. `load()` returns a versioned snapshot or undefined;
 binary-safe serialization if your backend only accepts strings. Do not mutate
 the supplied snapshot. The same-origin database contains the captured URLs,
 headers, and payloads; enable persistence only for traffic appropriate to retain.
+
+## Show or hide previous page loads
+
+The **Previous page loads** checkbox filters restored history without deleting
+it. Preset it with `createInspector({ includePreviousPageLoads: false })`, or call
+`inspector.setIncludePreviousPageLoads(false)`. It defaults to true.
+[View preferences](preferences.md) can save this choice together with column
+visibility, widths, and sorting. Preferences and traffic use separate storage
+keys and lifecycles.

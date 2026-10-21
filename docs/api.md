@@ -6,19 +6,21 @@ The [React component](react.md) wraps this API with React mounting and cleanup.
 
 Import from `web-network-inspector` or the source's `src/index.js`.
 
-| Option             | Default                         | Meaning                                                                                           |
-| ------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `scope`            | `window`                        | Browser window whose transports are captured.                                                     |
-| `container`        | `scope.document.body`           | DOM container for the host element.                                                               |
-| `filter`           | unset                           | Synchronous predicate for an instance-owned store. See [capture filters](filtering.md).           |
-| `store`            | `new NetworkCapture()`          | Retained history shared with this view.                                                           |
-| `capture`          | `true`                          | Install transport wrappers. Set false for manual events or another view of a shared store.        |
-| `open`             | `false`                         | Start with the waterfall expanded.                                                                |
-| `stylesheet`       | Module-relative `style.css` URL | CSS URL loaded inside the shadow root. Override for bundled assets.                               |
-| `resourcePreviews` | `"manual"`                      | `"on-select"` loads a resource preview on selection. See [request details](details.md).           |
-| `renderDetails`    | Built-in content-type renderer  | Function receiving a sandboxed iframe and DOM context. See [request details](details.md).         |
-| `columns`          | `defaultColumns`                | Ordered column definitions and synchronous render functions. See [waterfall columns](columns.md). |
-| `nonce`            | unset                           | Optional nonce on the stylesheet link for the host's CSP policy.                                  |
+| Option                     | Default                         | Meaning                                                                                           |
+| -------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `scope`                    | `window`                        | Browser window whose transports are captured.                                                     |
+| `container`                | `scope.document.body`           | DOM container for the host element.                                                               |
+| `filter`                   | unset                           | Synchronous predicate for an instance-owned store. See [capture filters](filtering.md).           |
+| `store`                    | `new NetworkCapture()`          | Retained history shared with this view.                                                           |
+| `capture`                  | `true`                          | Install transport wrappers. Set false for manual events or another view of a shared store.        |
+| `open`                     | `false`                         | Start with the waterfall expanded.                                                                |
+| `stylesheet`               | Module-relative `style.css` URL | CSS URL loaded inside the shadow root. Override for bundled assets.                               |
+| `resourcePreviews`         | `"manual"`                      | `"on-select"` loads a resource preview on selection. See [request details](details.md).           |
+| `renderDetails`            | Built-in content-type renderer  | Function receiving a sandboxed iframe and DOM context. See [request details](details.md).         |
+| `columns`                  | `defaultColumns`                | Ordered column definitions and synchronous render functions. See [waterfall columns](columns.md). |
+| `viewState`                | unset                           | Preloaded JSON view settings. See [view preferences](preferences.md).                             |
+| `includePreviousPageLoads` | `true`                          | Initial value for the Previous page loads checkbox. Saved view settings take priority.            |
+| `nonce`                    | unset                           | Optional nonce on the stylesheet link for the host's CSP policy.                                  |
 
 Returns `host`, `root` (the shadow root), `store`, and the methods below.
 The host owns its styles and does not change the page's padding or global CSS.
@@ -49,6 +51,14 @@ the store's preview and memory limits.
 Read the current column definitions, including resized widths and comparator functions, or replace them
 with a validated array. Defaults and named cell renderers are exported. See
 [waterfall columns](columns.md) for adding, replacing, and resizing columns.
+
+### View settings
+
+`getViewState()`, `setViewState(snapshot)`, and `subscribeView(listener)` read,
+restore, and observe JSON view settings. The listener receives a new snapshot; `subscribeView` returns an unsubscribe
+function. `getIncludePreviousPageLoads()` and
+`setIncludePreviousPageLoads(boolean)` control the history checkbox without
+removing retained entries. See [view preferences](preferences.md) for the format.
 
 ### `subscribe(listener)`
 
@@ -185,6 +195,15 @@ labels, and may still show expired rows, but releases their payloads.
 preview. `previewText(preview)` returns text or a hex dump. A preview contains
 `bytes`, `size` (possibly null), `text`, `truncated`, and optional `note` or
 `expired`. Expired bodies keep no byte data.
+
+## `createPersistentInspector(options)` and `createWebStorage(options)`
+
+The async factory restores view settings before mounting. It accepts the same
+options as `createInspector`, plus a storage adapter. By default it uses
+localStorage. Its `preferences` controller provides status, errors, flush,
+clear, and close. `createWebStorage({ storage, key })` adapts browser Web Storage.
+See [view preferences](preferences.md) for localStorage, sessionStorage,
+IndexedDB, and custom async adapter examples. Captured history is separate.
 
 ## Persistent history and details rendering
 

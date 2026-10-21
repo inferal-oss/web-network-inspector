@@ -1,10 +1,12 @@
+import { renderDemoDetails } from "./detail-renderer.js";
 import {
   activityInsight,
   insightSorter,
   insightStyles,
 } from "./insight-column.js";
 import {
-  createInspector,
+  createPersistentInspector,
+  createWebStorage,
   createPersistentCapture,
   defaultColumns,
   code,
@@ -14,13 +16,41 @@ const store = await createPersistentCapture({
     database: "web-network-inspector-demo",
   }),
 });
-const inspector = createInspector({
+const insightColumn = {
+  id: "insight",
+  label: "Activity Insight",
+  width: 190,
+  minWidth: 140,
+  render: activityInsight,
+  sort: insightSorter,
+  hidden: true,
+};
+const definitions = [
+  ...defaultColumns.slice(0, -1),
+  insightColumn,
+  defaultColumns.at(-1),
+].map((column) =>
+  column.id === "code"
+    ? {
+        ...column,
+        render(entry, context) {
+          code(entry, context);
+          context.container.style.color =
+            Number(context.container.textContent) >= 400 ? "#a12235" : "";
+        },
+      }
+    : column,
+);
+const inspector = await createPersistentInspector({
+  columns: definitions,
+  storage: createWebStorage({ key: "web-network-inspector-demo:view-v1" }),
   store,
   open: true,
   resourcePreviews: "on-select",
   renderDetails(context) {
-    context.renderDefault();
+    const cleanup = renderDemoDetails(context);
     syncDetailsDisplay(context.document);
+    return cleanup;
   },
 });
 window.addEventListener("pagehide", () => {
@@ -357,6 +387,9 @@ function syncDetailsDisplay(document) {
     "--brand",
     "--brand-dark",
     "--brand-soft",
+    "--signal",
+    "--sans",
+    "--mono",
     ...[10, 11, 12, 13, 14, 21, 22].map((size) => `--text-${size}`),
   ])
     document.documentElement.style.setProperty(
@@ -369,93 +402,117 @@ function syncDetailsDisplay(document) {
 const insightStyle = document.createElement("style");
 insightStyle.textContent = insightStyles;
 inspector.root.append(insightStyle);
-const insightColumn = {
-  id: "insight",
-  label: "Activity Insight",
-  width: 190,
-  minWidth: 140,
-  render: activityInsight,
-  sort: insightSorter,
-};
-const definitions = [
-  ...defaultColumns.slice(0, -1),
-  insightColumn,
-  defaultColumns.at(-1),
-];
-const enabled = new Set(defaultColumns.map((column) => column.id));
-const widths = new Map();
 const choices = document.getElementById("column-choices");
 const controls = new Map();
 const columnsButton = document.getElementById("columns-toggle");
-function applyColumns() {
-  for (const column of inspector.getColumns())
-    widths.set(column.id, { width: column.width, flex: column.flex });
-  const showInsight = enabled.has("insight");
-  inspector.setColumns(
-    definitions
-      .filter((column) => enabled.has(column.id))
-      .map((column) => ({
-        ...column,
-        ...widths.get(column.id),
-        sort:
-          (column.id === "size" &&
-            !document.getElementById("column-sort-size").checked) ||
-          (column.id === "insight" &&
-            !document.getElementById("column-sort-insight").checked)
-            ? false
-            : column.sort,
-        render:
-          column.id === "code" && showInsight
-            ? (entry, context) => {
-                code(entry, context);
-                context.container.style.color =
-                  Number(context.container.textContent) >= 400 ? "#a12235" : "";
-              }
-            : column.render,
-      })),
-  );
+function syncColumnControls() {
+  const columns = inspector.getColumns();
+  const visible = columns.filter((column) => !column.hidden);
+  const insight = columns.find((column) => column.id === "insight");
+  const showInsight = insight && !insight.hidden;
   for (const [id, input] of controls) {
-    input.checked = enabled.has(id);
-    input.disabled = enabled.size === 1 && input.checked;
+    const column = columns.find((column) => column.id === id);
+    input.checked = Boolean(column && !column.hidden);
+    input.disabled = visible.length === 1 && input.checked;
   }
-  columnsButton.disabled = showInsight && enabled.size === 1;
-  columnsButton.setAttribute("aria-pressed", String(showInsight));
+  for (const id of ["size", "insight"])
+    document.getElementById("column-sort-" + id).checked =
+      typeof columns.find((column) => column.id === id)?.sort === "function";
+  columnsButton.disabled = showInsight && visible.length === 1;
+  columnsButton.setAttribute("aria-pressed", String(Boolean(showInsight)));
   columnsButton.textContent = showInsight
     ? "Hide Activity Insight"
     : "Try custom columns";
   document.getElementById("columns-result").textContent = showInsight
-    ? "Activity Insight shows latency, payload sizes, message direction, and event correlation. Click its header to sort by recorded duration."
-    : enabled.size +
-      " columns visible. Resize, hide, or sort them to suit your workflow.";
+    ? "Activity Insight shows latency, payload sizes, message direction, and event correlation. Your layout and sorting are remembered across reloads."
+    : visible.length +
+      " columns visible. Layout and sorting are remembered across reloads.";
+}
+function applyColumns() {
+  const current = new Map(
+    inspector.getColumns().map((column) => [column.id, column]),
+  );
+  inspector.setColumns(
+    definitions.map((column) => ({
+      ...column,
+      ...current.get(column.id),
+      hidden: !controls.get(column.id).checked,
+      sort:
+        column.id === "size" || column.id === "insight"
+          ? document.getElementById("column-sort-" + column.id).checked
+            ? column.sort
+            : false
+          : column.sort,
+      render:
+        column.id === "code" && controls.get("insight").checked
+          ? (entry, context) => {
+              code(entry, context);
+              context.container.style.color =
+                Number(context.container.textContent) >= 400 ? "#a12235" : "";
+            }
+          : column.render,
+    })),
+  );
 }
 for (const column of definitions) {
   const label = document.createElement("label"),
     input = document.createElement("input");
   input.type = "checkbox";
-  input.checked = enabled.has(column.id);
   input.dataset.columnChoice = column.id;
-  input.addEventListener("change", () => {
-    if (input.checked) enabled.add(column.id);
-    else enabled.delete(column.id);
-    applyColumns();
-  });
+  input.addEventListener("change", applyColumns);
   label.append(input, column.label);
   choices.append(label);
   controls.set(column.id, input);
 }
 columnsButton.addEventListener("click", () => {
-  if (enabled.has("insight")) enabled.delete("insight");
-  else enabled.add("insight");
+  controls.get("insight").checked = !controls.get("insight").checked;
   applyColumns();
 });
-document.getElementById("columns-reset").addEventListener("click", () => {
-  enabled.clear();
-  for (const column of defaultColumns) enabled.add(column.id);
-  widths.clear();
-  inspector.setColumns(defaultColumns);
-  document.getElementById("column-sort-size").checked = true;
-  document.getElementById("column-sort-insight").checked = true;
-  applyColumns();
-});
+document
+  .getElementById("columns-reset")
+  .addEventListener("click", () => inspector.setColumns(definitions));
 for (const id of ["column-sort-size", "column-sort-insight"])
   document.getElementById(id).addEventListener("change", applyColumns);
+const offView = inspector.subscribeView(syncColumnControls);
+syncColumnControls();
+window.addEventListener("pagehide", offView, { once: true });
+
+// Host tokens reach Shadow DOM and are copied into the details iframe above.
+// Open Regard applies inline overrides, so clarity/contrast takes precedence.
+const themeStyle = document.createElement("style");
+themeStyle.textContent = `
+  :host([data-demo-theme="plum"]) {
+    --panel: #fffdfd; --paper: #faf5ff; --ink: #312044;
+    --muted: #705c80; --line: #dfd1ee; --brand: #7c3aed;
+    --brand-dark: #6024b5; --brand-soft: #efe5ff; --signal: #a72d73;
+  }
+  :host([data-demo-theme="plum"]) .network-bar {
+    border-top: 3px solid var(--brand);
+    background: linear-gradient(110deg, var(--paper), var(--brand-soft));
+  }
+  :host([data-demo-theme="plum"]) .network-popup { border-radius: 18px; }
+  :host([data-demo-theme="plum"]) .network-bar button { border-radius: 9px; }
+`;
+inspector.root.append(themeStyle);
+const themeToggle = document.getElementById("theme-toggle");
+function applyDemoTheme() {
+  inspector.host.dataset.demoTheme = themeToggle.checked ? "plum" : "default";
+  document.getElementById("theme-result").textContent = themeToggle.checked
+    ? "Plum theme · host tokens + shadow-root overrides · live details styling"
+    : "Default inspector styling";
+  const frame = inspector.root.querySelector(".network-detail-frame");
+  if (frame?.contentDocument?.documentElement)
+    syncDetailsDisplay(frame.contentDocument);
+  try {
+    localStorage.setItem(
+      "web-network-inspector-demo:theme",
+      themeToggle.checked ? "plum" : "default",
+    );
+  } catch {} // The demo remains usable when browser storage is blocked.
+}
+try {
+  themeToggle.checked =
+    localStorage.getItem("web-network-inspector-demo:theme") === "plum";
+} catch {}
+themeToggle.addEventListener("change", applyDemoTheme);
+applyDemoTheme();

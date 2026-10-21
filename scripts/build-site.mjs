@@ -39,6 +39,7 @@ export async function buildSite({
   for (const file of [
     "examples/demo.js",
     "examples/insight-column.js",
+    "examples/detail-renderer.js",
     "scripts/screenshot.mjs",
     "examples/style.css",
     "site/site.css",
@@ -90,7 +91,11 @@ export async function buildSite({
   await cp(resolve(root, "src"), resolve(output, runtime), { recursive: true });
   const demoSource = (await readFile(resolve(output, "demo/demo.js"), "utf8"))
     .replaceAll("../src/", "../" + runtime + "/")
-    .replaceAll('"./insight-column.js"', `"./insight-column.js?v=${revision}"`);
+    .replaceAll('"./insight-column.js"', `"./insight-column.js?v=${revision}"`)
+    .replaceAll(
+      '"./detail-renderer.js"',
+      `"./detail-renderer.js?v=${revision}"`,
+    );
   await writeFile(resolve(output, "demo/demo.js"), demoSource);
   let demo = await readFile(resolve(output, "demo/index.html"), "utf8");
   demo = demo
@@ -137,6 +142,7 @@ export async function buildSite({
     ["Request details", "docs/details/", "docs/details.md"],
     ["Waterfall columns", "docs/columns/", "docs/columns.md"],
     ["Local history", "docs/storage/", "docs/storage.md"],
+    ["View preferences", "docs/preferences/", "docs/preferences.md"],
     ["Display preferences", "docs/display/", "docs/display.md"],
   ];
   for (const [title, path, source] of pages) {

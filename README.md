@@ -144,6 +144,6 @@ Pass a synchronous `filter` to `createInspector`, or configure it on a shared
 The demo also connects to Postman’s public WebSocket echo service after you
 click Connect, then captures sent and echoed messages as separate frames.
 
-[Waterfall columns and custom renderers](docs/columns.md) · [Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)
+[Remember layout and sorting](docs/preferences.md) · [Waterfall columns and custom renderers](docs/columns.md) · [Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)
 
 The public site and demo use synchronized [Open Regard display preferences](docs/display.md). This integration adds no runtime dependency to the inspector package.

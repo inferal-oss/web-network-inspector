@@ -1,3 +1,8 @@
+import {
+  restoreViewState,
+  createWebStorage,
+  persistView,
+} from "./view-preferences.js";
 import { normalizeColumns } from "./columns.js";
 import { NetworkCapture, installNetworkCapture } from "./network-capture.js";
 import { setupNetworkActivity } from "./network-activity.js";
@@ -24,8 +29,19 @@ export function createInspector({
   resourcePreviews = "manual",
   columns,
   renderDetails,
+  viewState,
+  includePreviousPageLoads = true,
 } = {}) {
   columns = normalizeColumns(columns);
+  if (typeof includePreviousPageLoads !== "boolean")
+    throw new TypeError("includePreviousPageLoads must be a boolean.");
+  const columnCatalog = columns;
+  const initialView = restoreViewState(
+    columns,
+    viewState,
+    includePreviousPageLoads,
+  );
+  columns = initialView.columns;
   if (!["manual", "on-select"].includes(resourcePreviews))
     throw new TypeError("resourcePreviews must be manual or on-select.");
   if (renderDetails !== undefined && typeof renderDetails !== "function")
@@ -52,6 +68,8 @@ export function createInspector({
   const ui = setupNetworkActivity(root, scope, store, {
     renderDetails,
     columns,
+    columnCatalog,
+    initialView,
     resourcePreviews,
     loadResource: transport?.loadResource,
   });
@@ -205,6 +223,26 @@ export function createInspector({
     host,
     root,
     store,
+    getViewState() {
+      ensure();
+      return ui.getViewState();
+    },
+    setViewState(state) {
+      ensure();
+      ui.setViewState(state);
+    },
+    subscribeView(listener) {
+      ensure();
+      return ui.subscribeView(listener);
+    },
+    getIncludePreviousPageLoads() {
+      ensure();
+      return ui.getIncludePreviousPageLoads();
+    },
+    setIncludePreviousPageLoads(value) {
+      ensure();
+      ui.setIncludePreviousPageLoads(value);
+    },
     getColumns() {
       ensure();
       return ui.getColumns();
@@ -280,3 +318,43 @@ export {
   defaultColumns,
   sizeSorter,
 } from "./columns.js";
+
+export { createWebStorage } from "./view-preferences.js";
+
+/** Restore view settings before mounting; history remains a separate store. */
+export async function createPersistentInspector({ storage, ...options } = {}) {
+  const scope = options.scope ?? globalThis.window;
+  storage ??= createWebStorage({ storage: () => scope.localStorage });
+  if (
+    typeof storage?.load !== "function" ||
+    typeof storage?.save !== "function"
+  )
+    throw new TypeError("storage requires load() and save(snapshot).");
+  let snapshot,
+    loadError = null;
+  try {
+    snapshot = await storage.load();
+  } catch (error) {
+    loadError = String(error?.message ?? error);
+  }
+  let inspector;
+  try {
+    inspector = createInspector({
+      ...options,
+      viewState: snapshot ?? options.viewState,
+    });
+  } catch (error) {
+    try {
+      await storage.close?.();
+    } catch {}
+    throw error;
+  }
+  const preferences = persistView(inspector, storage, scope, loadError);
+  inspector.preferences = preferences;
+  const destroy = inspector.destroy;
+  inspector.destroy = () => {
+    void preferences.close();
+    destroy();
+  };
+  return inspector;
+}

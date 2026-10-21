@@ -21,6 +21,8 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
     resourcePreviews,
     columns,
     renderDetails,
+    viewState,
+    includePreviousPageLoads,
     ...containerProps
   },
   forwardedRef,
@@ -42,6 +44,8 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
       resourcePreviews,
       columns,
       renderDetails,
+      viewState,
+      includePreviousPageLoads,
     });
     instance.current = inspector;
     let cleanup;
@@ -79,6 +83,8 @@ export const NetworkInspector = forwardRef(function NetworkInspector(
     resourcePreviews,
     columns,
     renderDetails,
+    viewState,
+    includePreviousPageLoads,
     forwardedRef,
   ]);
   useEffect(() => {

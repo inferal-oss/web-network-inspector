@@ -104,3 +104,14 @@ The React component accepts the same `renderDetails` prop. Keep the callback
 stable with `useCallback`; changing its identity recreates the inspector.
 
 Restored entries show **Previous page** for their start time and retain their absolute capture timestamp. The range label identifies history from previous page loads.
+
+## Try the application's custom renderer
+
+Select any row in the [live demo](https://oss.inferal.org/web-network-inspector/demo/).
+Its **Custom application summary** appears above the default renderer. Events
+show their level, environment, and correlation; requests show duration and
+payload size; WebSocket frames show direction. The renderer calls
+`context.renderDefault()` after appending its own card, preserving the standard
+headers and body previews. See the [complete renderer source](https://github.com/inferal-oss/web-network-inspector/blob/main/examples/detail-renderer.js)
+for DOM creation, scoped styles, and cleanup. The demo's Plum theme switch also
+updates CSS variables in the already-open iframe.

@@ -28,7 +28,7 @@ WebSocket close codes are not HTTP codes.
 Supply the full ordered array to `createInspector({ columns })` or
 `inspector.setColumns(columns)`. Reuse any default function with your own label,
 width, and position. `inspector.getColumns()` returns copies of the current
-settings, including resized widths. `setColumns(defaultColumns)` resets them.
+settings, including hidden columns and resized widths. `setColumns(defaultColumns)` resets them.
 
 ```js
 import {
@@ -183,23 +183,26 @@ renderer and can be changed in its source.
 
 ## Definition fields
 
-| Field       | Default  | Meaning                                                  |
-| ----------- | -------- | -------------------------------------------------------- |
-| `id`        | required | Unique, nonempty string                                  |
-| `label`     | required | Header and accessible resize label                       |
-| `render`    | required | Synchronous function described above                     |
-| `width`     | 160      | Initial width in pixels                                  |
-| `minWidth`  | 40       | Resize minimum, at least 24                              |
-| `maxWidth`  | 2400     | Resize maximum, at most 4000                             |
-| `flex`      | false    | Grow to use spare space; manual resizing fixes its width |
-| `live`      | false    | Refresh even when the entry has not changed              |
-| `className` | empty    | Cell classes inside the inspector's shadow root          |
-| `sort`      | unset    | Comparator function enables sorting; false disables it   |
+| Field       | Default  | Meaning                                                      |
+| ----------- | -------- | ------------------------------------------------------------ |
+| `id`        | required | Unique, nonempty string                                      |
+| `label`     | required | Header and accessible resize label                           |
+| `render`    | required | Synchronous function described above                         |
+| `width`     | 160      | Initial width in pixels                                      |
+| `minWidth`  | 40       | Resize minimum, at least 24                                  |
+| `maxWidth`  | 2400     | Resize maximum, at most 4000                                 |
+| `flex`      | false    | Grow to use spare space; manual resizing fixes its width     |
+| `live`      | false    | Refresh even when the entry has not changed                  |
+| `className` | empty    | Cell classes inside the inspector's shadow root              |
+| `hidden`    | false    | Keep this definition available but hide its header and cells |
+| `sort`      | unset    | Comparator function enables sorting; false disables it       |
 
 Provide 1–24 columns and finite widths within their bounds. Invalid arrays are
 rejected before replacing the current layout or installing capture. Widths are
-kept for this inspector instance. Save `getColumns()` widths in your application
-if desired; functions themselves cannot be serialized to JSON.
+kept for this inspector instance. Use [view preferences](preferences.md) to restore
+visibility, widths, sortability, and sorting across reloads with configurable
+storage. Pass the full catalog with `hidden: true` for optional columns; functions
+themselves are never serialized. At least one column must remain visible.
 
 The optional React component accepts `columns` too. Keep the array stable with
 `useMemo`; a changed identity recreates the inspector.

@@ -156,7 +156,7 @@ export function normalizeColumns(columns = defaultColumns) {
   if (!Array.isArray(columns) || columns.length < 1 || columns.length > 24)
     throw new TypeError("columns must contain between 1 and 24 definitions.");
   const ids = new Set();
-  return columns.map((column) => {
+  const definitions = columns.map((column) => {
     if (
       !column ||
       typeof column.id !== "string" ||
@@ -177,6 +177,8 @@ export function normalizeColumns(columns = defaultColumns) {
       throw new TypeError(
         "Column sort must be false or a comparator function.",
       );
+    if (column.hidden !== undefined && typeof column.hidden !== "boolean")
+      throw new TypeError("Column hidden must be a boolean.");
     ids.add(column.id);
     const { width = 160, minWidth = 40, maxWidth = 2400 } = column;
     if (
@@ -190,12 +192,16 @@ export function normalizeColumns(columns = defaultColumns) {
       throw new RangeError("Invalid column width bounds.");
     return {
       ...column,
+      hidden: column.hidden ?? false,
       sort: column.sort === "size" ? sizeSorter : column.sort,
       width: Math.round(width),
       minWidth: Math.round(minWidth),
       maxWidth: Math.round(maxWidth),
     };
   });
+  if (!definitions.some((column) => !column.hidden))
+    throw new RangeError("At least one column must be visible.");
+  return definitions;
 }
 
 export function setupColumnLayout({
@@ -205,6 +211,7 @@ export function setupColumnLayout({
   columns,
   sortSize,
   onSort,
+  onChange = () => {},
 }) {
   const document = root.ownerDocument,
     header = root.getElementById("network-columns"),
@@ -212,6 +219,7 @@ export function setupColumnLayout({
   let definitions = normalizeColumns(columns),
     drag = null,
     sorting = null;
+  const visible = () => definitions.filter((column) => !column.hidden);
   const buttons = new Map();
   const boundButtons = new WeakSet();
   const states = new Map();
@@ -230,18 +238,18 @@ export function setupColumnLayout({
   function widths() {
     panel.style.setProperty(
       "--network-columns",
-      definitions
+      visible()
         .map((c) => (c.flex ? `minmax(${c.width}px,1fr)` : `${c.width}px`))
         .join(" "),
     );
     panel.style.setProperty(
       "--network-table-width",
-      `${definitions.reduce((n, c) => n + c.width, 24) + (definitions.length - 1) * 8}px`,
+      `${visible().reduce((n, c) => n + c.width, 24) + (visible().length - 1) * 8}px`,
     );
-    for (let i = 0; i < definitions.length; i++)
+    for (let i = 0; i < visible().length; i++)
       header.children[i].lastChild.setAttribute(
         "aria-valuenow",
-        String(definitions[i].width),
+        String(visible()[i].width),
       );
   }
   function resize(column, width) {
@@ -251,10 +259,11 @@ export function setupColumnLayout({
     );
     column.flex = false;
     widths();
+    onChange();
   }
   function updateSort(next) {
     sorting = next;
-    for (const column of definitions) {
+    for (const column of visible()) {
       const button = buttons.get(column.id);
       if (!button) continue;
       const direction = sorting?.id === column.id ? sorting.direction : null;
@@ -271,7 +280,7 @@ export function setupColumnLayout({
   function headings() {
     header.replaceChildren();
     buttons.clear();
-    for (const column of definitions) {
+    for (const column of visible()) {
       const cell = document.createElement("span");
       cell.className = "network-column-heading";
       if (typeof column.sort === "function") {
@@ -359,7 +368,7 @@ export function setupColumnLayout({
     renderRow(row, entry, timeline) {
       let state = states.get(row);
       if (!state) {
-        state = definitions.map((column) => {
+        state = visible().map((column) => {
           const container = document.createElement("span");
           container.className = `network-cell ${column.className || ""}`;
           container.dataset.column = column.id;

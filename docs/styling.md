@@ -161,3 +161,18 @@ Inline styles also work. Supply accessible names and keyboard behavior for appli
 The panel is fixed to the bottom of the viewport and overlays the page. Reserve space in your application layout if needed. Avoid hiding its close control or making its scroll areas inaccessible.
 
 CSS variables are the simplest customization surface. Internal class and ID selectors reflect the current markup; review overrides when upgrading the library. The source stylesheet is available in the repository and through the exported `web-network-inspector/style.css` path.
+
+## Try a theme in the demo
+
+Use **Use the custom Plum theme** in the [live demo](https://oss.inferal.org/web-network-inspector/demo/).
+It changes the host's surface and accent variables, adds a gradient bar and
+rounded controls inside the shadow root, and copies current variables into the
+open details iframe. Switch back to compare with the defaults. The demo
+remembers this application-owned switch separately from inspector view settings.
+
+The theme uses `:host([data-demo-theme="plum"])` rules added through
+`inspector.root.append(style)`. The accompanying card shows copyable CSS. Open
+Regard's clarity and contrast profiles use inline host variables, which take
+precedence over these stylesheet rules. See [the demo source](https://github.com/inferal-oss/web-network-inspector/blob/main/examples/demo.js)
+for the switch and live iframe synchronization. This theme is a demonstration,
+not an additional built-in inspector option.

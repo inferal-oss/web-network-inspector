@@ -312,3 +312,26 @@ select {
   width: 14px;
   height: 14px;
 }
+.socket-card > * {
+  min-width: 0;
+}
+
+.theme-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d9c7f7;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(110deg, #faf5ff, #f0e7ff);
+  color: #6024b5;
+  font-weight: 600;
+}
+.theme-choice input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: #7c3aed;
+}
