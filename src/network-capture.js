@@ -300,6 +300,23 @@ function headersPreview(headers) {
   return result.slice(0, 8192);
 }
 
+function prepareFetchInit(init) {
+  const headers = init?.headers;
+  if (headers == null || typeof headers[Symbol.iterator] !== "function")
+    return init;
+  // A HeadersInit iterator may be usable only once. Normalize it before either
+  // capture or fetch reads it. Let iterator errors reject the request as usual.
+  const normalized = new Headers(headers);
+  const descriptors = Object.getOwnPropertyDescriptors(init);
+  descriptors.headers = { value: normalized, enumerable: true };
+  const target = Object.create(Object.getPrototypeOf(init), descriptors);
+  // Keep inherited options and getter receivers, including on frozen inputs.
+  return new Proxy(target, {
+    get: (_target, key) =>
+      key === "headers" ? normalized : Reflect.get(init, key, init),
+  });
+}
+
 /** Wrap the page's transports. Return native responses and sockets to callers. */
 export function installNetworkCapture(scope, store = new NetworkCapture()) {
   if (installations.has(scope))
@@ -468,6 +485,7 @@ export function installNetworkCapture(scope, store = new NetworkCapture()) {
   }
   if (originalFetch)
     scope.fetch = async function (input, init) {
+      init = prepareFetchInit(init);
       let entry;
       safe(() => {
         const request =

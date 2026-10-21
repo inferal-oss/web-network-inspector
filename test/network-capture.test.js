@@ -699,3 +699,91 @@ test("constructor validates retention and reader limits before capture starts", 
   ])
     assert.throws(() => new NetworkCapture({ limits }), RangeError);
 });
+
+test("fetch preserves one-shot headers and inherited options without mutating a frozen init", async () => {
+  let received;
+  const host = scope(async (input, init) => {
+    received = {
+      input,
+      method: init.method,
+      body: init.body,
+      headers: [...new Headers(init.headers)],
+      signal: init.signal,
+    };
+    return new Response(null, { status: 204 });
+  });
+  const capture = installNetworkCapture(host);
+  let iterations = 0;
+  const headers = (function* () {
+    iterations++;
+    yield ["x-demo", "present"];
+    yield ["content-type", "application/json"];
+  })();
+  const controller = new AbortController();
+  const init = Object.freeze(
+    Object.create(
+      { method: "POST" },
+      {
+        headers: { value: headers, enumerable: true },
+        signal: { value: controller.signal, enumerable: true },
+        body: {
+          get() {
+            assert.equal(this, init);
+            return '{"message":"hello"}';
+          },
+          enumerable: true,
+        },
+      },
+    ),
+  );
+  try {
+    await host.fetch("/echo", init);
+    assert.deepEqual(received, {
+      input: "/echo",
+      method: "POST",
+      body: '{"message":"hello"}',
+      headers: [
+        ["content-type", "application/json"],
+        ["x-demo", "present"],
+      ],
+      signal: controller.signal,
+    });
+    assert.equal(iterations, 1);
+    assert.equal(init.headers, headers);
+    assert.match(capture.store.entries[0].requestHeaders, /x-demo: present/);
+    assert.match(
+      capture.store.entries[0].requestHeaders,
+      /content-type: application\/json/,
+    );
+    assert.equal(
+      previewText(capture.store.entries[0].requestBody),
+      '{"message":"hello"}',
+    );
+  } finally {
+    capture.disconnect();
+  }
+});
+
+test("invalid iterable headers reject without sending a partially consumed request", async () => {
+  let sent = false;
+  const host = scope(async (_input, init) => {
+    new Headers(init.headers);
+    sent = true;
+    return new Response(null, { status: 204 });
+  });
+  const capture = installNetworkCapture(host);
+  const error = new Error("Header iterator failed");
+  const headers = (function* () {
+    yield ["x-demo", "present"];
+    throw error;
+  })();
+  try {
+    await assert.rejects(
+      host.fetch("/echo", { headers }),
+      (value) => value === error,
+    );
+    assert.equal(sent, false);
+  } finally {
+    capture.disconnect();
+  }
+});

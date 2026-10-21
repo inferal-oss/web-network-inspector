@@ -295,3 +295,42 @@ test("demo interactions record user labels and custom bar changes", () =>
       /3 app events/,
     );
   }));
+
+test("iterable headers reach the server and remain visible in capture", () =>
+  fixture(async (page) => {
+    let sent;
+    await page.route("**/echo", async (route) => {
+      sent = {
+        headers: await route.request().allHeaders(),
+        method: route.request().method(),
+        body: route.request().postData(),
+      };
+      await route.continue();
+    });
+    const result = await page.evaluate(async () => {
+      const headers = (function* () {
+        yield ["x-demo", "present"];
+        yield ["content-type", "application/json"];
+      })();
+      const init = Object.freeze(
+        Object.create(
+          { method: "POST" },
+          {
+            headers: { value: headers, enumerable: true },
+            body: { value: '{"message":"hello"}', enumerable: true },
+          },
+        ),
+      );
+      const response = await fetch("/echo", init);
+      const entry = window.inspector.store.entries.findLast(
+        (item) => item.kind === "http",
+      );
+      return { status: response.status, captured: entry.requestHeaders };
+    });
+    assert.equal(result.status, 200);
+    assert.equal(sent.headers["x-demo"], "present");
+    assert.equal(sent.headers["content-type"], "application/json");
+    assert.equal(sent.method, "POST");
+    assert.equal(sent.body, '{"message":"hello"}');
+    assert.match(result.captured, /x-demo: present/);
+  }));
