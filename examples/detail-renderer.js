@@ -39,6 +39,12 @@ export function renderDemoDetails(context) {
   if (entry.kind === "event") {
     title = entry.label || entry.eventType;
     details.push(entry.eventType || "Application event");
+    if (entry.eventSpan)
+      details.push(
+        entry.end == null
+          ? "Running span"
+          : `${entry.status} · ${(entry.end - entry.start).toFixed(1)} ms`,
+      );
     if (entry.body?.text && entry.body.bytes.length <= 4096) {
       try {
         const data = JSON.parse(new TextDecoder().decode(entry.body.bytes));

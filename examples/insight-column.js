@@ -26,6 +26,19 @@ export function activityInsight(entry, { container, document }) {
     detail = entry.correlationId
       ? `↳ ${entry.correlationId}`
       : `${size} · event data`;
+    if (entry.eventSpan) {
+      tone =
+        entry.end == null
+          ? "amber"
+          : entry.status === "Error"
+            ? "red"
+            : "green";
+      badge =
+        entry.end == null
+          ? "◷ Running span"
+          : `${entry.status} · ${duration.toFixed(0)} ms`;
+      detail = `${entry.eventType || "App span"}${entry.correlationId ? " · " + entry.correlationId : ""}`;
+    }
   } else if (entry.kind === "message") {
     tone = entry.direction === "out" ? "blue" : "green";
     badge = entry.direction === "out" ? "↑ Sent" : "↓ Received";

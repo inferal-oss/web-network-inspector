@@ -120,7 +120,7 @@ Frozen browsing rows release custom content if its entry is evicted.
 
 A renderer runs when its entry changes. Set `live: true` to run on each timeline
 refresh, as the built-in waterfall does. Rendering is suspended while browsing
-fixed rows. Avoid side effects and expensive work in live renderers.
+fixed rows, except span rows, which continue updating within the held scale. Avoid side effects and expensive work in live renderers.
 
 ## Sorting a column
 

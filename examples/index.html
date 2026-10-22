@@ -225,6 +225,39 @@ inspector.setColumns([
 }</code></pre>
           </details>
         </section>
+        <section class="card socket-card" aria-labelledby="span-title">
+          <div>
+            <span class="step">07 / EVENT SPANS</span>
+            <h2 id="span-title">Some moments take time.</h2>
+            <p>
+              Start a span and watch its bar grow. Finish it yourself, or run
+              the three-second example. The same row keeps its duration,
+              payload, and correlation when it completes. Follow waterfall to
+              see new rows; turn off Previous page loads to focus on this visit.
+            </p>
+            <div class="socket-actions">
+              <button id="span-start">Start event span</button>
+              <button id="span-finish" disabled>Finish event span</button>
+              <button id="span-run">Run a 3-second span</button>
+            </div>
+            <p id="span-result" class="result" role="status">
+              Ready to measure application work
+            </p>
+          </div>
+          <details class="columns-example" open>
+            <summary>See the span API</summary>
+            <pre><code class="language-js">const span = inspector.startEvent({
+  type: "report.build", label: "Build report",
+  correlationId: "report-42",
+});
+try {
+  await buildReport();
+  span?.finish({ data: JSON.stringify({ rows: 42 }) });
+} catch (error) {
+  span?.finish({ status: "Error", data: error.message });
+}</code></pre>
+          </details>
+        </section>
       </div>
       <div class="extension-note">
         <span class="extension-symbol" aria-hidden="true">↙</span>

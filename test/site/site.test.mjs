@@ -68,6 +68,7 @@ test("all site pages and local assets resolve beneath the project prefix", async
     "",
     "docs/",
     "docs/api/",
+    "docs/spans/",
     "docs/styling/",
     "docs/react/",
     "docs/filtering/",

@@ -140,6 +140,17 @@ export async function createPersistentCapture({
           data.end = start;
           data.status = "Interrupted by page reload";
         }
+        if (data.kind === "event" && data.eventSpan && data.end == null) {
+          data.end =
+            start +
+            Math.max(
+              0,
+              (Number.isFinite(snapshot.savedAt)
+                ? snapshot.savedAt
+                : original.capturedAt) - original.capturedAt,
+            );
+          data.status = "Interrupted by page reload";
+        }
         for (const key of ["connection", "eventId", "nearEvent"])
           if (data[key] != null) data[key] = ids.get(data[key]) ?? null;
         const entry = store.add(data);

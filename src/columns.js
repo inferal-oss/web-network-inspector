@@ -81,7 +81,9 @@ export function waterfall(entry, { container, document, timeline }) {
     bar = container.firstChild;
   bar.style.left = `${pos.left}%`;
   bar.style.width =
-    entry.socketEvent || ["event", "message"].includes(entry.kind)
+    entry.socketEvent ||
+    entry.kind === "message" ||
+    (entry.kind === "event" && !entry.eventSpan)
       ? "3px"
       : `max(3px, ${pos.width}%)`;
   container.title = `${(entry.start - start).toFixed(1)} ms after timeline start${entry.end != null ? ` · ${(entry.end - entry.start).toFixed(1)} ms` : ""}`;

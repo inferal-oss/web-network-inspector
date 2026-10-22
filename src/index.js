@@ -265,6 +265,14 @@ export function createInspector({
       ensure();
       return store.recordEvent(event);
     },
+    startEvent(event) {
+      ensure();
+      return store.startEvent(event);
+    },
+    finishEvent(id, options) {
+      ensure();
+      return store.finishEvent(id, options);
+    },
     subscribe(listener) {
       ensure();
       return store.subscribe(listener);

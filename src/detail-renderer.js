@@ -82,7 +82,7 @@ export function renderDefaultDetails({
     [
       "Duration",
       entry.end == null
-        ? entry.kind === "http" || entry.kind === "socket"
+        ? entry.kind === "http" || entry.kind === "socket" || entry.eventSpan
           ? "In progress"
           : "—"
         : ms(entry.end - entry.start),

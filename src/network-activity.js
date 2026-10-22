@@ -453,7 +453,8 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
     if (!open) return;
     const now = store.now(),
       live = store.entries.some(
-        (e) => ["http", "socket"].includes(e.kind) && e.end == null,
+        (e) =>
+          (["http", "socket"].includes(e.kind) || e.eventSpan) && e.end == null,
       );
     if (!dirty && !live) return;
     dirty = false;
@@ -559,9 +560,15 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
           (value, e) =>
             Math.max(
               value,
-              e.end ?? (["http", "socket"].includes(e.kind) ? now : e.start),
+              e.end ??
+                (["http", "socket"].includes(e.kind) || e.eventSpan
+                  ? now
+                  : e.start),
             ),
-          start + 1,
+          // Keep short, isolated spans visibly growing instead of filling the
+          // entire auto-scaled timeline immediately.
+          start +
+            (filtered.some((e) => e.eventSpan && e.end == null) ? 5000 : 1),
         );
     if (!frozen) {
       const keep = new Set(visible.map((e) => e.id));
@@ -609,6 +616,7 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
         row.setAttribute("role", "button");
         row.setAttribute("tabindex", "0");
         row.dataset.kind = entry.kind;
+        row.dataset.eventSpan = String(Boolean(entry.eventSpan));
         row.dataset.entryId = String(entry.id);
         const id = entry.id;
         listen(row, "click", (event) => {
@@ -639,6 +647,19 @@ export function setupNetworkActivity(root, scope, store, options = {}) {
       columnLayout.renderRow(row, entry, { start, end, now });
     }
     columnLayout.releaseExpired();
+    // Active spans keep their existing row and frozen scale while being
+    // inspected. Their bar and final status can still advance in place.
+    if (frozen)
+      for (const id of view.ids) {
+        const entry = store.byId.get(id),
+          row = rows.get(id);
+        if (entry?.eventSpan && row)
+          columnLayout.renderRow(row, entry, {
+            start,
+            end,
+            now: Math.min(now, end),
+          });
+      }
     for (const [id, row] of rows) {
       const pressed = String(selected === id);
       if (row.getAttribute("aria-pressed") !== pressed)

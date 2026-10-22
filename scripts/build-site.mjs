@@ -140,6 +140,7 @@ export async function buildSite({
   const pages = [
     ["Getting started", "docs/", "docs/getting-started.md"],
     ["API reference", "docs/api/", "docs/api.md"],
+    ["Event spans", "docs/spans/", "docs/spans.md"],
     ["Styling guide", "docs/styling/", "docs/styling.md"],
     ["React component", "docs/react/", "docs/react.md"],
     ["Capture filters", "docs/filtering/", "docs/filtering.md"],

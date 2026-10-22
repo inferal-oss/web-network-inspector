@@ -146,20 +146,54 @@ export class NetworkCapture {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
-  recordEvent({
-    type = "event",
-    label = type,
-    data,
-    correlationId = null,
-    parentId = this.activeEvent,
-  } = {}) {
+  recordEvent(options = {}) {
+    return this.#event(options, false);
+  }
+  startEvent(options = {}) {
+    const entry = this.#event(options, true);
+    if (!entry) return null;
+    const id = entry.id;
+    // Keep functions outside retained records so snapshots remain cloneable.
+    return Object.freeze({
+      id,
+      finish: (options) => this.finishEvent(id, options),
+    });
+  }
+  finishEvent(id, { status = "Complete", data } = {}) {
+    const entry = this.byId.get(id);
+    if (
+      !entry ||
+      entry.kind !== "event" ||
+      !entry.eventSpan ||
+      entry.end != null
+    )
+      return null;
+    this.update(entry, {
+      end: Math.max(entry.start, this.now()),
+      status: short(status, 80),
+    });
+    if (data !== undefined)
+      this.preview(entry, "body", bodyPreview(data, this.limits.preview));
+    return entry;
+  }
+  #event(
+    {
+      type = "event",
+      label = type,
+      data,
+      correlationId = null,
+      parentId = this.activeEvent,
+    } = {},
+    span,
+  ) {
     const entry = this.add({
       kind: "event",
       eventType: short(type, 80),
       label: short(label, 160),
       correlationId: correlationId == null ? null : short(correlationId, 128),
       eventId: parentId,
-      status: "Event",
+      status: span ? "Running" : "Event",
+      ...(span ? { eventSpan: true } : {}),
     });
     if (data !== undefined)
       this.preview(entry, "body", bodyPreview(data, this.limits.preview));

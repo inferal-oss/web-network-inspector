@@ -46,6 +46,12 @@ when associating asynchronous work. Types, labels, and correlation strings
 are bounded to 80, 160, and 128 characters respectively. The payload follows
 the store's preview and memory limits.
 
+### `startEvent(metadata)` and `finishEvent(id, options?)`
+
+Start a timed application event, then close it with the returned handle's
+`finish()` or by numeric ID. Its waterfall bar grows until completion. See
+[event spans](spans.md) for status, payloads, nesting, pause, and retention.
+
 ### `getColumns()` and `setColumns(columns)`
 
 Read the current column definitions, including resized widths and comparator functions, or replace them

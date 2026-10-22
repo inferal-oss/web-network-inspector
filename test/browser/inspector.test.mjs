@@ -1443,3 +1443,94 @@ test("demo checkbox changes publish one labeled event with state from page and s
       "code",
     );
   }));
+
+test("demo spans grow on a held timeline and finish in the same retained row", () =>
+  fixture(async (page) => {
+    await page.evaluate(() => {
+      window.spanTime = 1000;
+      window.inspector.store.now = () => window.spanTime;
+    });
+    await page
+      .getByRole("button", { name: "Start event span", exact: true })
+      .click();
+    const row = page.getByRole("button", { name: /Build report span/ });
+    await row.waitFor();
+    const bar = row.locator(".network-track i");
+    await page.evaluate(() => (window.spanTime = 1500));
+    await page.waitForFunction(
+      () =>
+        parseFloat(
+          window.inspector.root
+            .querySelector('[data-event-span="true"] .network-track i')
+            .style.width.match(/[\d.]+%/)?.[0] || "0",
+        ) > 5,
+    );
+    const first = await bar.getAttribute("style");
+    await row.click();
+    await page.evaluate(() => (window.spanTime = 2500));
+    await page.waitForFunction(
+      (first) =>
+        window.inspector.root
+          .querySelector('[data-event-span="true"] .network-track i')
+          .getAttribute("style") !== first,
+      first,
+    );
+    const id = await row.getAttribute("data-entry-id");
+    await page
+      .getByRole("button", { name: "Finish event span", exact: true })
+      .click();
+    await page.waitForFunction(
+      (id) => window.inspector.store.byId.get(Number(id)).status === "Complete",
+      id,
+    );
+    assert.equal(await row.getAttribute("data-entry-id"), id);
+    assert.equal(await row.count(), 1);
+    await row.getByText("Complete", { exact: true }).waitFor();
+    assert.match(await row.textContent(), /Complete/);
+    const details = page.frameLocator(".network-detail-frame");
+    await details.getByText("Report ready", { exact: false }).first().waitFor();
+    assert.match(await details.locator("body").textContent(), /1500\.0 ms/);
+    const finished = await bar.getAttribute("style");
+    await page.evaluate(() => (window.spanTime = 4000));
+    await page.waitForTimeout(350);
+    assert.equal(await bar.getAttribute("style"), finished);
+    await page.evaluate(() =>
+      window.inspector.recordEvent({ label: "Still records" }),
+    );
+    assert.equal(
+      await page.evaluate(() => window.inspector.store.entries.at(-1).label),
+      "Still records",
+    );
+  }));
+
+test("timed demo spans complete automatically and pause prevents a new span", () =>
+  fixture(async (page) => {
+    await page
+      .getByRole("button", { name: "Run a 3-second span", exact: true })
+      .click();
+    await page.getByRole("button", { name: /Build report span/ }).waitFor();
+    await page.waitForFunction(() =>
+      document.getElementById("span-result").textContent.startsWith("Complete"),
+    );
+    const result = await page.evaluate(() =>
+      window.inspector.store.entries.find((e) => e.eventSpan),
+    );
+    assert.equal(result.status, "Complete");
+    assert.ok(result.end - result.start >= 2900);
+    await page
+      .getByRole("button", { name: "Pause recording", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Start event span", exact: true })
+      .click();
+    assert.match(
+      await page.locator("#span-result").textContent(),
+      /Recording paused/,
+    );
+    assert.equal(
+      await page.evaluate(
+        () => window.inspector.store.entries.filter((e) => e.eventSpan).length,
+      ),
+      1,
+    );
+  }));

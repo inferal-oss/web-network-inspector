@@ -588,3 +588,62 @@ window.addEventListener(
   },
   { once: true },
 );
+
+// A span is retained once; finishing updates that row instead of adding a point.
+const spanStart = document.getElementById("span-start");
+const spanFinish = document.getElementById("span-finish");
+const spanRun = document.getElementById("span-run");
+const spanResult = document.getElementById("span-result");
+let demoSpan = null,
+  spanTimer = null,
+  spanTick = null,
+  spanStarted = 0;
+function finishDemoSpan() {
+  if (!demoSpan) return;
+  const entry = demoSpan.finish({
+    data: JSON.stringify({ environment, result: "Report ready", rows: 42 }),
+  });
+  clearTimeout(spanTimer);
+  clearInterval(spanTick);
+  demoSpan = null;
+  spanStart.disabled = spanRun.disabled = false;
+  spanFinish.disabled = true;
+  spanResult.textContent = entry
+    ? `Complete · ${(entry.end - entry.start).toFixed(0)} ms · inspect Build report span`
+    : "The span is no longer retained. Start another to try again.";
+}
+function startDemoSpan(timed) {
+  if (demoSpan) return;
+  demoSpan = inspector.startEvent({
+    type: "demo.report",
+    label: "Build report span",
+    correlationId: "demo-report",
+    parentId: null,
+    data: JSON.stringify({ environment, mode: timed ? "timed" : "manual" }),
+  });
+  if (!demoSpan) {
+    spanResult.textContent =
+      "Recording paused · resume capture to start a span";
+    return;
+  }
+  spanStarted = performance.now();
+  spanStart.disabled = spanRun.disabled = true;
+  spanFinish.disabled = false;
+  const update = () => {
+    spanResult.textContent = `Running · ${((performance.now() - spanStarted) / 1000).toFixed(1)} s · finish to keep the measured duration`;
+  };
+  update();
+  spanTick = setInterval(update, 100);
+  if (timed) spanTimer = setTimeout(finishDemoSpan, 3000);
+}
+spanStart.addEventListener("click", () => startDemoSpan(false));
+spanRun.addEventListener("click", () => startDemoSpan(true));
+spanFinish.addEventListener("click", finishDemoSpan);
+window.addEventListener(
+  "pagehide",
+  () => {
+    clearTimeout(spanTimer);
+    clearInterval(spanTick);
+  },
+  { once: true },
+);

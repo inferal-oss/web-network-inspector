@@ -343,6 +343,11 @@ svg {
 .network-row[data-kind="resource"] .network-track i {
   background: #8c97a6;
 }
+.network-row[data-event-span="true"] .network-track i {
+  height: 8px;
+  top: 4px;
+  min-width: 3px;
+}
 .network-detail {
   overflow: hidden;
   min-width: 0;
