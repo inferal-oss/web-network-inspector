@@ -50,3 +50,9 @@ for (const tab of tabs) {
     tabs[index].focus();
   });
 }
+
+const installFramework = document.getElementById("install-framework");
+installFramework?.addEventListener("change", () => {
+  for (const panel of document.querySelectorAll("[data-install-example]"))
+    panel.hidden = panel.dataset.installExample !== installFramework.value;
+});

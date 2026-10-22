@@ -8,10 +8,20 @@ The library is plain JavaScript with no runtime dependencies or build step.
 - Search, connection and type filters, size sorting, and paged history.
 - Stable rows and time scale while selecting or browsing incoming traffic.
 - Text, binary hex, and expandable JSON previews, including truncated JSON.
-- Generic application events, custom bar items, and application-owned popups.
+- Point events and timed spans, custom bar items, and application-owned popups.
 - Shadow DOM styles, keyboard controls, and explicit teardown.
 
-## Try the example
+## Install
+
+```sh
+npm install web-network-inspector
+```
+
+Use the browser ES module in your application. The core has no runtime
+dependencies. React 18 or later is needed only for the optional
+`web-network-inspector/react` entry point.
+
+## Try the example from a source checkout
 
 Requires Node.js 22.5 or later for development.
 
@@ -27,12 +37,13 @@ request button. A bundled response keeps the demo usable if httpbin is unavailab
 
 ## Embed
 
-Use a relative module URL when serving the source directly:
+With Vite, import the stylesheet as a URL so it loads inside the inspector's Shadow DOM:
 
 ```js
-import { createInspector } from "./src/index.js";
+import { createInspector } from "web-network-inspector";
+import stylesheet from "web-network-inspector/style.css?url";
 
-const inspector = createInspector({ open: true });
+const inspector = createInspector({ open: true, stylesheet });
 inspector.recordEvent({
   type: "cart.changed",
   label: "Added an item",
@@ -41,10 +52,11 @@ inspector.recordEvent({
 });
 ```
 
-Package consumers can import from `web-network-inspector` after installing a
-local checkout or package archive. This repository does not require publication
-to run. Serve `src/style.css` alongside the module. For a bundler that emits CSS
-separately, pass its public CSS URL as `stylesheet`.
+Other bundlers can copy `web-network-inspector/style.css` to a public asset and
+pass that URL as `stylesheet`. A global CSS import does not cross the Shadow DOM
+boundary. When serving the source directly, import `./src/index.js` and keep
+`src/style.css` beside it. See the [getting-started guide](docs/getting-started.md)
+for JavaScript and React examples.
 
 ```js
 const item = inspector.addBarItem({
@@ -144,6 +156,6 @@ Pass a synchronous `filter` to `createInspector`, or configure it on a shared
 The demo also connects to Postman’s public WebSocket echo service after you
 click Connect, then captures sent and echoed messages as separate frames.
 
-[Remember layout and sorting](docs/preferences.md) · [Waterfall columns and custom renderers](docs/columns.md) · [Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)
+[Timed application events](docs/spans.md) · [Remember layout and sorting](docs/preferences.md) · [Waterfall columns and custom renderers](docs/columns.md) · [Request details and custom iframe renderers](docs/details.md) · [Local history and retention](docs/storage.md)
 
 The public site and demo use synchronized [Open Regard display preferences](docs/display.md). This integration adds no runtime dependency to the inspector package.

@@ -431,3 +431,40 @@ test("demo uses a versioned runtime so cached releases cannot mix scripts", asyn
   assert.match(source, /\.\.\/runtime-[a-f0-9]{12}\/index.js/);
   assert.doesNotMatch(source, /\.\.\/src\//);
 });
+
+test("npm quick start switches JavaScript and React examples and keeps the sponsor chevron blue", () =>
+  pageAt("", async (page) => {
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Copy npm install command", exact: true })
+        .getAttribute("data-copy"),
+      "npm install web-network-inspector",
+    );
+    const picker = page.getByRole("combobox", {
+      name: "Installation example",
+      exact: true,
+    });
+    assert.match(
+      await page.locator('[data-install-example="javascript"]').textContent(),
+      /createInspector/,
+    );
+    await picker.selectOption("react");
+    assert.equal(
+      await page.locator('[data-install-example="javascript"]').isVisible(),
+      false,
+    );
+    assert.match(
+      await page.locator('[data-install-example="react"]').textContent(),
+      /NetworkInspector/,
+    );
+    assert.match(
+      await page.locator('[data-install-example="react"]').textContent(),
+      /style.css\?url/,
+    );
+    assert.equal(
+      await page
+        .locator(".footer-sponsor img")
+        .evaluate((n) => getComputedStyle(n).filter),
+      "none",
+    );
+  }));

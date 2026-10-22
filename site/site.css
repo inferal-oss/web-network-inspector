@@ -630,7 +630,6 @@ h1 span {
 .footer-sponsor img {
   width: 14px;
   height: 18px;
-  filter: brightness(0) invert(1);
 }
 .footer-bottom > a {
   font: 0.625rem var(--mono);
@@ -1065,4 +1064,66 @@ html[data-regard-profile] .site-footer .footer-sponsor {
 }
 .site-footer .footer-identity > p {
   color: #fff;
+}
+
+.npm-section {
+  padding-block: 50px 80px;
+  scroll-margin-top: 100px;
+}
+.npm-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.2fr;
+  gap: 70px;
+  align-items: center;
+}
+.npm-section h2 {
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  letter-spacing: -0.04em;
+  line-height: 1.12;
+  margin-block: 15px;
+}
+.npm-section p {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  line-height: 1.8;
+}
+.npm-grid > * {
+  min-width: 0;
+}
+.npm-code-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #304565;
+  font: 0.625rem var(--mono);
+  color: #c9ddfa;
+}
+.npm-code-header label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.npm-code-header select {
+  font: inherit;
+  color: #fff;
+  background: #203653;
+  border: 1px solid #526d95;
+  border-radius: 5px;
+  padding: 6px 8px;
+}
+.npm-code-header select:focus-visible {
+  outline: 2px solid #a9caff;
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .npm-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .npm-section {
+    padding-block: 30px 50px;
+  }
 }

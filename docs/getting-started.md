@@ -2,23 +2,30 @@
 
 Add a network waterfall to your application with a few lines of JavaScript. Web Network Inspector has no runtime dependencies and does not require a framework.
 
-## Install from source
+## Install with npm
 
-The package is named `web-network-inspector`. Until an npm release is published, install the current source directly from GitHub:
+Install [web-network-inspector on npm](https://www.npmjs.com/package/web-network-inspector):
 
 ```sh
-npm install github:inferal-oss/web-network-inspector
+npm install web-network-inspector
 ```
 
-You can also clone the repository and serve the `src/` directory alongside your application. No library build step is required.
+The core has no runtime dependencies. React is an optional peer dependency;
+install it only if you use the [React component](react.md). You can also clone
+the repository and serve its `src/` directory without a library build step.
 
 ## Create an inspector
 
 ```js
 import { createInspector } from "web-network-inspector";
+import stylesheet from "web-network-inspector/style.css?url";
 
-const inspector = createInspector({ open: true });
+const inspector = createInspector({ open: true, stylesheet });
 ```
+
+This example uses Vite's `?url` asset imports. A global stylesheet import alone
+does not style the Shadow DOM. Other bundlers can copy the exported stylesheet
+to a public URL, as shown below.
 
 Install the inspector before creating requests and WebSocket connections that you want to inspect. It wraps fetch, XMLHttpRequest, and new WebSocket connections in the selected browser window. Resource timings appear where the browser makes them available.
 
@@ -46,6 +53,9 @@ const saved = inspector.recordEvent({
 ```
 
 Events share the same timeline as requests and messages. Correlation IDs are application metadata. The inspector does not infer a backend protocol.
+
+Work that takes time can use [event spans](spans.md): `const span =
+inspector.startEvent({ label: "Build report" })`, followed by `span?.finish()`.
 
 ## Add a control and popup
 

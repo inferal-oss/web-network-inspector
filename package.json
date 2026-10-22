@@ -50,5 +50,22 @@
     "react": {
       "optional": true
     }
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/inferal-oss/web-network-inspector.git"
+  },
+  "homepage": "https://oss.inferal.org/web-network-inspector/",
+  "bugs": {
+    "url": "https://github.com/inferal-oss/web-network-inspector/issues"
+  },
+  "keywords": [
+    "network",
+    "inspector",
+    "waterfall",
+    "fetch",
+    "websocket",
+    "debugging",
+    "react"
+  ]
 }

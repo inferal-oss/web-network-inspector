@@ -34,17 +34,19 @@
             >
           </div>
           <div class="install-command">
-            <code>npm install github:inferal-oss/web-network-inspector</code
+            <code>npm install web-network-inspector</code
             ><button
               class="copy-button"
-              data-copy="npm install github:inferal-oss/web-network-inspector"
+              data-copy="npm install web-network-inspector"
               aria-label="Copy install command"
             >
               Copy
             </button>
           </div>
           <p class="install-note">
-            Install the current source from GitHub. No runtime dependencies.
+            <a href="https://www.npmjs.com/package/web-network-inspector"
+              >Available on npm</a
+            >. No runtime dependencies.
           </p>
         </div>
         <div class="hero-aside">
@@ -76,6 +78,90 @@
           <div class="hero-facts">
             <span>Framework independent</span><span>Optional local history</span
             ><span>Yours to extend</span>
+          </div>
+        </div>
+      </section>
+      <section
+        class="npm-section wrap"
+        id="install"
+        aria-labelledby="install-title"
+      >
+        <div class="npm-grid">
+          <div>
+            <p class="eyebrow">ADD IT TO YOUR APPLICATION</p>
+            <h2 id="install-title">
+              Install once.<br />See the whole exchange.
+            </h2>
+            <p>
+              Start with plain JavaScript, or opt into the React component. Your
+              framework and styles stay yours.
+            </p>
+            <div class="install-command">
+              <code>npm install web-network-inspector</code
+              ><button
+                class="copy-button"
+                data-copy="npm install web-network-inspector"
+                aria-label="Copy npm install command"
+              >
+                Copy
+              </button>
+            </div>
+            <p class="install-note">
+              v{{VERSION}} · Apache-2.0 or MIT ·
+              <a href="https://www.npmjs.com/package/web-network-inspector"
+                >View on npm ↗</a
+              >
+            </p>
+            <a class="text-link" href="{{BASE}}docs/"
+              >Read the installation guide →</a
+            >
+          </div>
+          <div class="code-showcase">
+            <div class="npm-code-header">
+              <span>QUICK START / VITE</span
+              ><label for="install-framework"
+                >Example
+                <select
+                  id="install-framework"
+                  aria-label="Installation example"
+                  aria-controls="install-examples"
+                >
+                  <option value="javascript">JavaScript</option>
+                  <option value="react">React</option>
+                </select></label
+              >
+            </div>
+            <div id="install-examples">
+              <div data-install-example="javascript">
+                <pre><code class="language-js">import { createInspector } from "web-network-inspector";
+import stylesheet from "web-network-inspector/style.css?url";
+
+const inspector = createInspector({
+  open: true,
+  stylesheet,
+});
+
+// Start capture before your application makes requests.
+// inspector.destroy();</code></pre>
+              </div>
+              <div data-install-example="react" hidden>
+                <pre><code class="language-jsx">import { NetworkInspector } from "web-network-inspector/react";
+import stylesheet from "web-network-inspector/style.css?url";
+
+export function App() {
+  return (
+    &lt;&gt;
+      &lt;YourApplication /&gt;
+      &lt;NetworkInspector open stylesheet={stylesheet} /&gt;
+    &lt;/&gt;
+  );
+}</code></pre>
+              </div>
+            </div>
+            <div class="code-footnote">
+              <span>Vite asset URLs · React 18+ is optional</span
+              ><a href="{{BASE}}docs/styling/">Other bundlers →</a>
+            </div>
           </div>
         </div>
       </section>

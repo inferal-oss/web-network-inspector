@@ -2,6 +2,9 @@
 
 Use the optional `web-network-inspector/react` entry point with React 18 or later. The core package does not import React, and its peer dependency is optional: ordinary JavaScript consumers do not need to install it.
 
+Install with `npm install web-network-inspector`. Use your application's existing
+React 18+ installation; the core entry point never imports React.
+
 ## Mount the inspector
 
 ```jsx
