@@ -159,3 +159,34 @@ test("preference errors are reported without rejecting flush or breaking view ch
   assert.equal(preferences.error, null);
   await preferences.close();
 });
+
+test("Web Storage saves checkbox changes before the change handler returns", async () => {
+  const values = new Map();
+  let blocked = false;
+  const storage = createWebStorage({
+    storage: {
+      getItem: (key) => values.get(key) ?? null,
+      setItem(key, value) {
+        if (blocked) throw Error("Storage blocked");
+        values.set(key, value);
+      },
+      removeItem: (key) => values.delete(key),
+    },
+  });
+  const { preferences, emit } = viewFixture(storage);
+  emit({ version: 1, columns: [], includePreviousPageLoads: false });
+  assert.equal(storage.load().includePreviousPageLoads, false);
+  blocked = true;
+  emit({ version: 1, columns: [], includePreviousPageLoads: true });
+  assert.equal(preferences.status, "Unavailable");
+  assert.match(preferences.error, /Storage blocked/);
+  assert.equal(storage.load().includePreviousPageLoads, false);
+  blocked = false;
+  emit({ version: 1, columns: [], includePreviousPageLoads: true });
+  assert.equal(preferences.status, "Ready");
+  assert.equal(storage.load().includePreviousPageLoads, true);
+  const cleared = preferences.clear();
+  assert.equal(storage.load(), null);
+  await cleared;
+  await preferences.close();
+});

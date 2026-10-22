@@ -1,5 +1,7 @@
 import { normalizeColumns } from "./columns.js";
 
+const webStorageAdapters = new WeakSet();
+
 /** JSON-only settings; executable renderers and comparators always come from the application. */
 export function restoreViewState(
   columns,
@@ -72,7 +74,7 @@ export function createWebStorage({
     typeof storage === "function"
       ? storage()
       : (storage ?? globalThis.localStorage);
-  return {
+  const adapter = {
     load() {
       const value = backend().getItem(key);
       return value == null ? null : JSON.parse(value);
@@ -84,6 +86,8 @@ export function createWebStorage({
       backend().removeItem(key);
     },
   };
+  webStorageAdapters.add(adapter);
+  return adapter;
 }
 
 /** Serialize asynchronous writes and keep view persistence independent of captured traffic. */
@@ -93,6 +97,7 @@ export function persistView(inspector, storage, scope, loadError = null) {
     closed = false,
     closing = null;
   let tail = Promise.resolve();
+  const immediate = webStorageAdapters.has(storage);
   const state = {
     status: loadError ? "Unavailable" : "Ready",
     error: loadError,
@@ -102,6 +107,16 @@ export function persistView(inspector, storage, scope, loadError = null) {
     state.error = String(error?.message ?? error);
   };
   function enqueue(action) {
+    if (immediate) {
+      try {
+        action();
+        state.status = "Ready";
+        state.error = null;
+      } catch (error) {
+        failure(error);
+      }
+      return tail;
+    }
     const run = async () => {
       try {
         await action();
@@ -124,6 +139,10 @@ export function persistView(inspector, storage, scope, loadError = null) {
   const unsubscribe = inspector.subscribeView((snapshot) => {
     if (closed) return;
     pending = snapshot;
+    if (immediate) {
+      void flush();
+      return;
+    }
     clearTimeout(timer);
     timer = setTimeout(() => {
       void flush();

@@ -1036,6 +1036,39 @@ test("demo restores visibility, widths, sort direction, sort opt-outs, and histo
     );
   }));
 
+test("history checkbox survives immediate reload and keeps retained rows hidden", () =>
+  fixture(async (page) => {
+    await page
+      .evaluate(async () => {
+        window.inspector.recordEvent({ label: "Event before reload" });
+        await window.inspector.store.persistence.flush();
+        const checkbox =
+          window.inspector.root.querySelector("#network-previous");
+        checkbox.click();
+        location.reload();
+      })
+      .catch((error) => {
+        if (!/Execution context was destroyed/.test(error.message)) throw error;
+      });
+    await page.waitForFunction(
+      () =>
+        window.inspector &&
+        window.inspector.store.entries.some(
+          (e) => e.label === "Event before reload" && e.restored,
+        ),
+    );
+    assert.equal(
+      await page.getByLabel("Previous page loads", { exact: true }).isChecked(),
+      false,
+    );
+    assert.equal(
+      await page.getByRole("button", { name: /Event before reload/ }).count(),
+      0,
+    );
+    await page.getByLabel("Previous page loads", { exact: true }).check();
+    await page.getByRole("button", { name: /Event before reload/ }).waitFor();
+  }));
+
 test("previous-page checkbox hides restored rows and selection without deleting retained data", () =>
   fixture(async (page) => {
     await page.evaluate(() => {

@@ -78,8 +78,11 @@ does not merge simultaneous edits from different tabs.
 - `clear()`: discard pending saves and remove stored settings after any in-flight save.
 - `close()`: unsubscribe, flush, and close the adapter; repeated calls share completion.
 
-Writes are coalesced over 150 ms. The factory attempts to flush on `pagehide`,
-but browser shutdown can interrupt asynchronous storage. Await `flush()` before
+The default localStorage adapter and adapters made with `createWebStorage()`
+save each change immediately, so a quick reload keeps the latest checkbox,
+column, and sorting settings. Other adapters coalesce writes over 150 ms.
+The factory attempts to flush on `pagehide`, but browser shutdown can interrupt
+asynchronous storage. Await `flush()` before
 controlled navigation when completion matters. Storage errors leave the
 inspector usable; a successful later write clears the error. Malformed JSON
 falls back to defaults with `Unavailable`; unsupported snapshot versions are
